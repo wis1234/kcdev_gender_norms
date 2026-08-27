@@ -1,0 +1,518 @@
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  C:\RONALDO\CKDEV\GENDER NORMS\Randomization\Outputs\Logs\merge_master_gender_norm.log
+  log type:  text
+ opened on:  14 Aug 2026, 15:00:27
+
+. 
+. *===============================================================*
+. * 1. NAME-CLEANING PROGRAM (uppercase, strip accents/punctuation)
+. *===============================================================*
+. capture program drop nettoyer_nom
+
+. program define nettoyer_nom
+  1.     syntax varname(string), generate(name)
+  2.     tempvar tmp1 tmp2
+  3.     gen `tmp1' = ustrupper(`varlist')
+  4.     gen `tmp2' = ustrnormalize(`tmp1', "nfd")
+  5.     replace `tmp2' = ustrregexra(`tmp2', "[\u0300-\u036f]", "")
+  6.     replace `tmp2' = ustrregexra(`tmp2', "[^A-Z0-9]", " ")
+  7.     replace `tmp2' = ustrregexra(`tmp2', " +", " ")
+  8.     gen `generate' = ustrtrim(`tmp2')
+  9. end
+
+. 
+. *===============================================================*
+. * 2. PREPARE THE "USING" DATASET (gender-norm selected schools)
+. *===============================================================*
+. import excel "$dir_data/$f_gender_norm", sheet("$sheet_gender_norm") firstrow clear
+(7 vars, 161 obs)
+
+. 
+. capture confirm variable NOMETABLISSEMENT
+
+. if _rc {
+.     display as error "Column NOMETABLISSEMENT not found in sheet $sheet_gender_norm - check the exact column name with 'describe'."
+. }
+
+. 
+. nettoyer_nom NOMETABLISSEMENT, generate(name_key)
+(0 real changes made)
+(22 real changes made)
+(4 real changes made)
+
+. nettoyer_nom COMMUNE,          generate(commune_key)
+(0 real changes made)
+(40 real changes made)
+(0 real changes made)
+
+. gen str200 school_id = name_key + "_" + commune_key
+
+. 
+. * Should be unique (each row = one selected school); warn if not.
+. duplicates tag school_id, gen(dup_gn)
+
+Duplicates in terms of school_id
+
+. quietly count if dup_gn > 0
+
+. if r(N) > 0 {
+.     display as error "WARNING: " r(N) " row(s) in the gender-norm selection share the same school_id - check for a real duplicate before trusting the merge."
+. }
+
+. drop dup_gn name_key commune_key
+
+. 
+. * Avoid clashing with master variables of the same name (MILIEU, COMMUNE,
+. * ARRONDISSEMENT, QUARTIERVILLAGE all exist in the master too) - prefix
+. * the gender-norm-specific copies so both sources stay visible/traceable.
+. rename MILIEU            milieu_gender_norm
+
+. rename ARRONDISSEMENT    arrondissement_gender_norm
+
+. rename COMMUNE           commune_gender_norm
+
+. rename QUARTIERVILLAGE   quartiervillage_gender_norm
+
+. * classification and giga_name keep their names (no clash with master)
+. 
+. tempfile gender_norm_clean
+
+. save `gender_norm_clean'
+file C:\Users\moust\AppData\Local\Temp\ST_68fc_000001.tmp saved as .dta format
+
+. 
+. quietly count
+
+. display as result ">>> Gender-norm selection ready: " r(N) " schools, school_id built from name + commune."
+>>> Gender-norm selection ready: 161 schools, school_id built from name + commune.
+
+. 
+. *===============================================================*
+. * 3. PREPARE THE MASTER DATASET (school_list_gender_norm)
+. *===============================================================*
+. import excel "$dir_data/$f_master", firstrow clear
+(58 vars, 180 obs)
+
+. 
+. capture confirm variable NOMETABLISSEMENT
+
+. if _rc {
+.     * Adjust this rename if the imported header differs (e.g. spaces
+.     * collapsed differently by Stata) - check with 'describe'.
+.     capture rename NOMETABLISSEMENT NOMETABLISSEMENT
+.     display as error "Column NOMETABLISSEMENT not found after import - check the exact name with 'describe' (source header was 'NOM ETABLISSEMENT')."
+. }
+
+. 
+. nettoyer_nom NOMETABLISSEMENT, generate(name_key)
+(0 real changes made)
+(27 real changes made)
+(5 real changes made)
+
+. nettoyer_nom COMMUNE,          generate(commune_key)
+(0 real changes made)
+(48 real changes made)
+(0 real changes made)
+
+. gen str200 school_id = name_key + "_" + commune_key
+
+. 
+. * Flag (don't drop) master schools whose school_id repeats within the
+. * master itself - informational only, since merge keep(master match)
+. * preserves every master row regardless.
+. duplicates tag school_id, gen(dup_master)
+
+Duplicates in terms of school_id
+
+. quietly count if dup_master > 0
+
+. display as result "[Master] " r(N) " rows share a school_id with at least one other master row (see Outputs\Data\master_school_id_ambigus.xlsx)."
+[Master] 0 rows share a school_id with at least one other master row (see Outputs\Data\master_school_id_ambigus.xlsx).
+
+. 
+. if r(N) > 0 {
+.     preserve
+.         keep if dup_master > 0
+.         sort school_id NOMETABLISSEMENT
+.         export excel using "$out_data\master_school_id_ambigus.xlsx", firstrow(variables) replace
+.     restore
+. }
+
+. else {
+.     display as result "[Master] No ambiguous school_id in the master - nothing to export."
+[Master] No ambiguous school_id in the master - nothing to export.
+. }
+
+. 
+. drop name_key commune_key dup_master
+
+. 
+. quietly count
+
+. display as result ">>> Master dataset ready: " r(N) " schools (all variables kept)."
+>>> Master dataset ready: 180 schools (all variables kept).
+
+. 
+. *===============================================================*
+. * 4. MERGE - master keeps ALL rows and ALL its own variables
+. *===============================================================*
+. merge m:1 school_id using `gender_norm_clean', gen(_merge_gn)
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                            19
+        from master                        19  (_merge_gn==1)
+        from using                          0  (_merge_gn==2)
+
+    Matched                               161  (_merge_gn==3)
+    -----------------------------------------
+
+. 
+. gen str20 statut_merge_gn = "matched_gender_norm" if _merge_gn == 3
+(19 missing values generated)
+
+. replace   statut_merge_gn = "master_only"         if _merge_gn == 1
+(19 real changes made)
+
+. label var statut_merge_gn "Match status vs. the gender-norm selected/classified schools"
+
+. 
+. * Using-only rows (_merge_gn == 2) would mean a selected school was NOT
+. * found in the master - shouldn't happen (master is the national list)
+. * but check and export for review just in case.
+. quietly count if _merge_gn == 2
+
+. if r(N) > 0 {
+.     display as error "WARNING: " r(N) " gender-norm-selected school(s) were NOT found in the master - see Outputs\Data\gender_norm_non_matchees.xlsx."
+.     preserve
+.         keep if _merge_gn == 2
+.         export excel using "$out_data\gender_norm_non_matchees.xlsx", firstrow(variables) replace
+.     restore
+.     drop if _merge_gn == 2   // these rows have no master data at all
+. }
+
+. 
+. drop _merge_gn
+
+. 
+. quietly count if statut_merge_gn == "matched_gender_norm"
+
+. display as result ">>> " r(N) " master schools matched to a gender-norm classification."
+>>> 161 master schools matched to a gender-norm classification.
+
+. quietly count
+
+. display as result ">>> Final dataset: " r(N) " schools total (full master + gender-norm columns where available)."
+>>> Final dataset: 180 schools total (full master + gender-norm columns where available).
+
+. 
+. *===============================================================*
+. * 5. KEEP ONLY MATCHED SCHOOLS + RENAME MILIEU VARIABLES
+. *===============================================================*
+. quietly count if statut_merge_gn != "matched_gender_norm"
+
+. display as result ">>> Dropping " r(N) " master-only (unmatched) school(s) before export."
+>>> Dropping 19 master-only (unmatched) school(s) before export.
+
+. keep if statut_merge_gn == "matched_gender_norm"
+(19 observations deleted)
+
+. 
+. * MILIEU (from the master) = administrative/declared status -> keep it,
+. * but rename to avoid ambiguity with the DEGURBA-based classification.
+. rename MILIEU        MILIEU_ADMIN
+
+. * classification (from the gender-norm/DEGURBA step) becomes the new MILIEU.
+. rename classification MILIEU
+
+. 
+. 
+. *======================================================================*
+. * 6. ELIGIBILITY BASED ON CLASS SIZE
+. *======================================================================*
+. * Create variable: total number of girls in 6th and 5th grade
+. gen elig_school = NBF6EME + NBF5EME
+
+. 
+. * Define eligibility: each class must have at least 15 girls
+. gen eligible = 1 if NBF6EME >= 15 & NBF5EME >= 15
+(5 missing values generated)
+
+. replace eligible = 0 if eligible == .
+(5 real changes made)
+
+. 
+. * Add labels for clarity
+. label define eliglbl 0 "Not eligible" 1 "Eligible"
+
+. label values eligible eliglbl
+
+. 
+. * Quick summary of results
+. tab eligible
+
+    eligible |      Freq.     Percent        Cum.
+-------------+-----------------------------------
+Not eligible |          5        3.11        3.11
+    Eligible |        156       96.89      100.00
+-------------+-----------------------------------
+       Total |        161      100.00
+
+. 
+. *Eligibility per department
+. tab DEPARTEMENT if eligible == 1
+
+DEPARTEMENT |      Freq.     Percent        Cum.
+------------+-----------------------------------
+ ATLANTIQUE |         84       53.85       53.85
+        ZOU |         72       46.15      100.00
+------------+-----------------------------------
+      Total |        156      100.00
+
+. *Eligibility per commune
+. tab COMMUNE if eligible == 1
+
+      COMMUNE |      Freq.     Percent        Cum.
+--------------+-----------------------------------
+       ABOMEY |          6        3.85        3.85
+ABOMEY-CALAVI |         19       12.18       16.03
+ AGBANGNIZOUN |          8        5.13       21.15
+       ALLADA |         14        8.97       30.13
+      BOHICON |         10        6.41       36.54
+         COVE |          5        3.21       39.74
+       DJIDJA |          9        5.77       45.51
+     KPOMASSE |         10        6.41       51.92
+       OUIDAH |          9        5.77       57.69
+       OUINHI |          6        3.85       61.54
+       SO-AVA |          5        3.21       64.74
+        TOFFO |          9        5.77       70.51
+ TORI-BOSSITO |          8        5.13       75.64
+     ZA-KPOTA |          8        5.13       80.77
+    ZAGNANADO |          8        5.13       85.90
+           ZE |         10        6.41       92.31
+   ZOGBODOMEY |         12        7.69      100.00
+--------------+-----------------------------------
+        Total |        156      100.00
+
+. 
+. 
+. 
+. *===============================================================*
+. * 7. EXPORT
+. *===============================================================*
+. 
+. * Keep only eligible schools before export
+. keep if eligible == 1
+(5 observations deleted)
+
+. 
+. *Drop the extra school before export
+. drop if NOMETABLISSEMENT == "CEG ELITES D'ABOMEY"
+(0 observations deleted)
+
+. 
+. *Replace the "URBAN_SEMIDENSE" schools by "PERIURBAN"
+. *replace MILIEU = "PERIURBAN" if MILIEU == "URBAN_SEMIDENSE"
+. /*Due to the inconsistency of the gps coordinates,
+> in those areas we keep the administrative classification
+> */
+. replace MILIEU = "RURAL" if MILIEU == "URBAN_SEMIDENSE"
+(9 real changes made)
+
+. replace MILIEU = "RURAL" if MILIEU == "Rural"
+(4 real changes made)
+
+. 
+. order school_id, first
+
+. order MILIEU MILIEU_ADMIN milieu_gender_norm giga_name arrondissement_gender_norm ///
+>       commune_gender_norm quartiervillage_gender_norm statut_merge_gn, last
+
+. 
+. save "$out_data\master_x_gender_norm.dta", replace
+file Outputs\Data\master_x_gender_norm.dta saved
+
+. export excel using "$out_data\master_x_gender_norm.xlsx", firstrow(variables) replace
+file Outputs\Data\master_x_gender_norm.xlsx saved
+
+. 
+. * Global view
+. tab MILIEU
+
+ classification |      Freq.     Percent        Cum.
+----------------+-----------------------------------
+      PERIURBAN |         72       46.15       46.15
+          RURAL |         84       53.85      100.00
+----------------+-----------------------------------
+          Total |        156      100.00
+
+. 
+. * Loop for all communes in the department ZOU
+. * This extracts all communes belonging to ZOU and runs a tabulation of MILIEU for each
+. levelsof COMMUNE if DEPARTEMENT == "ZOU", local(communes)
+`"ABOMEY"' `"AGBANGNIZOUN"' `"BOHICON"' `"COVE"' `"DJIDJA"' `"OUINHI"' `"ZA-KPOTA"' `"ZAGNANADO"' `"ZOGBODOMEY"'
+
+. 
+. foreach c of local communes {
+  2.     di "---- Commune: `c' ----"
+  3.     tab MILIEU if COMMUNE == "`c'" & DEPARTEMENT == "ZOU"
+  4. }
+---- Commune: ABOMEY ----
+
+ classification |      Freq.     Percent        Cum.
+----------------+-----------------------------------
+      PERIURBAN |          3       50.00       50.00
+          RURAL |          3       50.00      100.00
+----------------+-----------------------------------
+          Total |          6      100.00
+---- Commune: AGBANGNIZOUN ----
+
+ classification |      Freq.     Percent        Cum.
+----------------+-----------------------------------
+      PERIURBAN |          5       62.50       62.50
+          RURAL |          3       37.50      100.00
+----------------+-----------------------------------
+          Total |          8      100.00
+---- Commune: BOHICON ----
+
+ classification |      Freq.     Percent        Cum.
+----------------+-----------------------------------
+      PERIURBAN |         10      100.00      100.00
+----------------+-----------------------------------
+          Total |         10      100.00
+---- Commune: COVE ----
+
+ classification |      Freq.     Percent        Cum.
+----------------+-----------------------------------
+      PERIURBAN |          4       80.00       80.00
+          RURAL |          1       20.00      100.00
+----------------+-----------------------------------
+          Total |          5      100.00
+---- Commune: DJIDJA ----
+
+ classification |      Freq.     Percent        Cum.
+----------------+-----------------------------------
+      PERIURBAN |          6       66.67       66.67
+          RURAL |          3       33.33      100.00
+----------------+-----------------------------------
+          Total |          9      100.00
+---- Commune: OUINHI ----
+
+ classification |      Freq.     Percent        Cum.
+----------------+-----------------------------------
+      PERIURBAN |          2       33.33       33.33
+          RURAL |          4       66.67      100.00
+----------------+-----------------------------------
+          Total |          6      100.00
+---- Commune: ZA-KPOTA ----
+
+ classification |      Freq.     Percent        Cum.
+----------------+-----------------------------------
+      PERIURBAN |          5       62.50       62.50
+          RURAL |          3       37.50      100.00
+----------------+-----------------------------------
+          Total |          8      100.00
+---- Commune: ZAGNANADO ----
+
+ classification |      Freq.     Percent        Cum.
+----------------+-----------------------------------
+      PERIURBAN |          1       12.50       12.50
+          RURAL |          7       87.50      100.00
+----------------+-----------------------------------
+          Total |          8      100.00
+---- Commune: ZOGBODOMEY ----
+
+ classification |      Freq.     Percent        Cum.
+----------------+-----------------------------------
+      PERIURBAN |          3       25.00       25.00
+          RURAL |          9       75.00      100.00
+----------------+-----------------------------------
+          Total |         12      100.00
+
+. 
+. * Loop for all communes in the department ATLANTIQUE
+. * Same logic as above, but restricted to ATLANTIQUE
+. levelsof COMMUNE if DEPARTEMENT == "ATLANTIQUE", local(communes)
+`"ABOMEY-CALAVI"' `"ALLADA"' `"KPOMASSE"' `"OUIDAH"' `"SO-AVA"' `"TOFFO"' `"TORI-BOSSITO"' `"ZE"'
+
+. 
+. foreach c of local communes {
+  2.     di "---- Commune: `c' ----"
+  3.     tab MILIEU if COMMUNE == "`c'" & DEPARTEMENT == "ATLANTIQUE"
+  4. }
+---- Commune: ABOMEY-CALAVI ----
+
+ classification |      Freq.     Percent        Cum.
+----------------+-----------------------------------
+      PERIURBAN |         15       78.95       78.95
+          RURAL |          4       21.05      100.00
+----------------+-----------------------------------
+          Total |         19      100.00
+---- Commune: ALLADA ----
+
+ classification |      Freq.     Percent        Cum.
+----------------+-----------------------------------
+      PERIURBAN |          4       28.57       28.57
+          RURAL |         10       71.43      100.00
+----------------+-----------------------------------
+          Total |         14      100.00
+---- Commune: KPOMASSE ----
+
+ classification |      Freq.     Percent        Cum.
+----------------+-----------------------------------
+      PERIURBAN |          1       10.00       10.00
+          RURAL |          9       90.00      100.00
+----------------+-----------------------------------
+          Total |         10      100.00
+---- Commune: OUIDAH ----
+
+ classification |      Freq.     Percent        Cum.
+----------------+-----------------------------------
+      PERIURBAN |          4       44.44       44.44
+          RURAL |          5       55.56      100.00
+----------------+-----------------------------------
+          Total |          9      100.00
+---- Commune: SO-AVA ----
+
+ classification |      Freq.     Percent        Cum.
+----------------+-----------------------------------
+      PERIURBAN |          2       40.00       40.00
+          RURAL |          3       60.00      100.00
+----------------+-----------------------------------
+          Total |          5      100.00
+---- Commune: TOFFO ----
+
+ classification |      Freq.     Percent        Cum.
+----------------+-----------------------------------
+      PERIURBAN |          3       33.33       33.33
+          RURAL |          6       66.67      100.00
+----------------+-----------------------------------
+          Total |          9      100.00
+---- Commune: TORI-BOSSITO ----
+
+ classification |      Freq.     Percent        Cum.
+----------------+-----------------------------------
+      PERIURBAN |          1       12.50       12.50
+          RURAL |          7       87.50      100.00
+----------------+-----------------------------------
+          Total |          8      100.00
+---- Commune: ZE ----
+
+ classification |      Freq.     Percent        Cum.
+----------------+-----------------------------------
+      PERIURBAN |          3       30.00       30.00
+          RURAL |          7       70.00      100.00
+----------------+-----------------------------------
+          Total |         10      100.00
+
+. 
+. 
+. 
+. 
+. log close
+      name:  <unnamed>
+       log:  C:\RONALDO\CKDEV\GENDER NORMS\Randomization\Outputs\Logs\merge_master_gender_norm.log
+  log type:  text
+ closed on:  14 Aug 2026, 15:00:27
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------

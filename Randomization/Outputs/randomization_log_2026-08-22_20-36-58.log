@@ -1,0 +1,974 @@
+------------------------------------------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  C:\RONALDO\CKDEV\GENDER NORMS\Randomization\Outputs/randomization_log_2026-08-22_20-36-58.log
+  log type:  text
+ opened on:  22 Aug 2026, 20:36:58
+
+. 
+. set rng mt64
+
+. 
+. di as result "======================================================="
+=======================================================
+
+. di as result "GENDER NORMS RCT - RANDOMIZATION"
+GENDER NORMS RCT - RANDOMIZATION
+
+. di as result "======================================================="
+=======================================================
+
+. di as result "SEED_BLOCKS = $SEED_BLOCKS"
+SEED_BLOCKS = 20260730
+
+. di as result "SEED_ARMS   = $SEED_ARMS"
+SEED_ARMS   = 20260731
+
+. di as result "SEED_PARENT = $SEED_PARENT"
+SEED_PARENT = 20260801
+
+. di as result "======================================================="
+=======================================================
+
+. 
+. 
+. *======================================================================*
+. * 1. IMPORT AND VALIDATION
+. *======================================================================*
+. 
+. import excel using "$infile", firstrow clear case(upper)
+(68 vars, 156 obs)
+
+. 
+. *----------------------------------------------------------------------*
+. * School identifier
+. *----------------------------------------------------------------------*
+. 
+. capture confirm variable id_infra
+
+. 
+. if _rc {
+. 
+.     capture confirm variable SCHOOL_ID
+. 
+.     if _rc {
+.         di as error "Neither id_infra nor SCHOOL_ID exists."
+.         exit 111
+.     }
+. 
+.     quietly count if missing(SCHOOL_ID)
+. 
+.     if r(N) > 0 {
+.         di as error "`r(N)' schools have missing SCHOOL_ID."
+.         exit 459
+.     }
+. 
+.     quietly duplicates report SCHOOL_ID
+. 
+.     if r(unique_value) < r(N) {
+.         di as error "SCHOOL_ID is not unique."
+.         exit 459
+.     }
+. 
+.     egen long id_infra = group(SCHOOL_ID)
+. 
+. }
+
+. 
+. isid id_infra
+
+. 
+. 
+. *----------------------------------------------------------------------*
+. * Required variables
+. *----------------------------------------------------------------------*
+. 
+. foreach v of varlist DEPARTEMENT COMMUNE NOMETABLISSEMENT {
+  2. 
+.     quietly count if missing(`v')
+  3. 
+.     if r(N) > 0 {
+  4.         di as error "`r(N)' observations have missing `v'."
+  5.         exit 459
+  6.     }
+  7. 
+. }
+
+. 
+. 
+. *----------------------------------------------------------------------*
+. * Grade enrolment variables
+. *----------------------------------------------------------------------*
+. 
+. egen byte miss_grade = rmiss( ///
+>     NBM6EME NBF6EME NBM5EME NBF5EME ///
+> )
+
+. 
+. quietly count if miss_grade > 0
+
+. 
+. if r(N) > 0 {
+. 
+.     di as error ///
+>         "`r(N)' schools have missing 6eme/5eme enrolment."
+. 
+.     exit 459
+. 
+. }
+
+. 
+. drop miss_grade
+
+. 
+. 
+. *----------------------------------------------------------------------*
+. * Public schools / departments
+. *----------------------------------------------------------------------*
+. 
+. quietly count if ///
+>     !inlist(upper(strtrim(STATUT)), "PUBLIC", "PUBLIQUE")
+
+. 
+. if r(N) > 0 {
+. 
+.     di as error ///
+>         "`r(N)' non-public schools detected."
+. 
+.     exit 459
+. 
+. }
+
+. 
+. 
+. quietly count if ///
+>     !inlist(upper(strtrim(DEPARTEMENT)), "ZOU", "ATLANTIQUE")
+
+. 
+. if r(N) > 0 {
+. 
+.     di as error ///
+>         "`r(N)' schools outside Zou/Atlantique detected."
+. 
+.     exit 459
+. 
+. }
+
+. 
+. 
+. *----------------------------------------------------------------------*
+. * Technical string normalization
+. *----------------------------------------------------------------------*
+. 
+. foreach v of varlist ///
+>     DEPARTEMENT COMMUNE ARRONDISSEMENT ///
+>     QUARTIERVILLAGE NOMETABLISSEMENT ///
+>     STATUT MILIEU REGIME {
+  2. 
+.     capture confirm string variable `v'
+  3. 
+.     if !_rc {
+  4.         replace `v' = strtrim(stritrim(upper(`v')))
+  5.     }
+  6. 
+. }
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(156 real changes made)
+(0 real changes made)
+(156 real changes made)
+
+. 
+. capture confirm string variable MILIEU_ADMIN
+
+. 
+. if !_rc {
+.     replace MILIEU_ADMIN = ///
+>         strtrim(stritrim(upper(MILIEU_ADMIN)))
+(156 real changes made)
+. }
+
+. 
+. 
+. di as result ///
+>     "Input validated: `=_N' schools."
+Input validated: 156 schools.
+
+. 
+. save "$outputdir/ecoles_valid_step1.dta", replace
+file Outputs/ecoles_valid_step1.dta saved
+
+. 
+. 
+. *======================================================================*
+. * 2. SCHOOL SIZE CLASSIFICATION
+. *======================================================================*
+. *
+. * Target variable:
+. *
+. *     total enrolment in 6eme + 5eme
+. *
+. * Classification within each commune:
+. *
+. *     <= commune median  -> Small
+. *     >  commune median  -> Large
+. *
+. *======================================================================*
+. 
+. gen long target_enrol = ///
+>     NBM6EME + NBF6EME + ///
+>     NBM5EME + NBF5EME
+
+. 
+. label var target_enrol ///
+>     "Total enrolment in 6eme and 5eme"
+
+. 
+. 
+. bysort COMMUNE: gen long n_comm = _N
+
+. 
+. bysort COMMUNE: egen double med_enrol = ///
+>     median(target_enrol)
+
+. 
+. label var med_enrol ///
+>     "Median target enrolment within commune"
+
+. 
+. 
+. gen str8 size_label = ""
+(156 missing values generated)
+
+. 
+. replace size_label = "Small" ///
+>     if target_enrol <= med_enrol
+(82 real changes made)
+
+. 
+. replace size_label = "Large" ///
+>     if target_enrol > med_enrol
+(74 real changes made)
+
+. 
+. label var size_label ///
+>     "Small/Large according to commune median"
+
+. 
+. 
+. tab COMMUNE size_label, missing
+
+              | Small/Large according
+              |   to commune median
+      COMMUNE |     Large      Small |     Total
+--------------+----------------------+----------
+       ABOMEY |         3          3 |         6 
+ABOMEY-CALAVI |         9         10 |        19 
+ AGBANGNIZOUN |         4          4 |         8 
+       ALLADA |         6          8 |        14 
+      BOHICON |         5          5 |        10 
+         COVE |         2          3 |         5 
+       DJIDJA |         4          5 |         9 
+     KPOMASSE |         5          5 |        10 
+       OUIDAH |         4          5 |         9 
+       OUINHI |         3          3 |         6 
+       SO-AVA |         2          3 |         5 
+        TOFFO |         4          5 |         9 
+ TORI-BOSSITO |         4          4 |         8 
+     ZA-KPOTA |         4          4 |         8 
+    ZAGNANADO |         4          4 |         8 
+           ZE |         5          5 |        10 
+   ZOGBODOMEY |         6          6 |        12 
+--------------+----------------------+----------
+        Total |        74         82 |       156 
+
+. 
+. 
+. *----------------------------------------------------------------------*
+. * Save classification
+. *----------------------------------------------------------------------*
+. 
+. save "$outputdir/ecoles_size_classified.dta", replace
+file Outputs/ecoles_size_classified.dta saved
+
+. 
+. *======================================================================*
+. * 3-4. CONSTRUCTION DES BLOCS DE RANDOMISATION
+. *======================================================================*
+. *
+. * OBJECTIF :
+. *
+. * Dans chaque commune (ou pool de communes deja fusionne si necessaire),
+. * construire des blocs d'environ 6 ecoles.
+. *
+. * IMPORTANT :
+. *
+. *   commune_bloc = identifiant NUMERIQUE du pool final
+. *
+. *   commune_bloc_label = nom lisible du pool
+. *
+. *   size_label = Small / Large
+. *
+. * Small et Large NE constituent PAS deux strates separees.
+. *
+. * Ils servent uniquement a equilibrer la composition de chaque bloc.
+. *
+. * Exemple :
+. *
+. *   Commune avec 12 ecoles :
+. *
+. *       6 Small
+. *       6 Large
+. *
+. *   => 2 blocs de 6 :
+. *
+. *       Bloc 1 : 3 Small + 3 Large
+. *       Bloc 2 : 3 Small + 3 Large
+. *
+. * Exemple :
+. *
+. *   Commune avec 19 ecoles :
+. *
+. *       10 Small
+. *        9 Large
+. *
+. *   => 3 blocs :
+. *
+. *       Bloc 1 : 4 Small + 3 Large = 7
+. *       Bloc 2 : 3 Small + 3 Large = 6
+. *       Bloc 3 : 3 Small + 3 Large = 6
+. *
+. * L'objectif est que :
+. *
+. *   - la difference Small entre deux blocs <= 1
+. *   - la difference Large entre deux blocs <= 1
+. *   - aucun bloc < 6 ecoles
+. *
+. *======================================================================*
+. 
+. 
+. *----------------------------------------------------------------------*
+. * 3A. CHARGEMENT DU FICHIER
+. *----------------------------------------------------------------------*
+. 
+. clear
+
+. 
+. use "$outputdir/ecoles_size_classified.dta", clear
+
+. 
+. 
+. *----------------------------------------------------------------------*
+. * 3B. VERIFICATIONS INITIALES
+. *----------------------------------------------------------------------*
+. 
+. di as result "======================================================="
+=======================================================
+
+. di as result "VERIFICATION DU FICHIER POUR LA CONSTRUCTION DES BLOCS"
+VERIFICATION DU FICHIER POUR LA CONSTRUCTION DES BLOCS
+
+. di as result "======================================================="
+=======================================================
+
+. 
+. describe COMMUNE size_label target_enrol med_enrol n_comm
+
+Variable      Storage   Display    Value
+    name         type    format    label      Variable label
+------------------------------------------------------------------------------------------------------------------------
+COMMUNE         str13   %13s                  COMMUNE
+size_label      str8    %9s                   Small/Large according to commune median
+target_enrol    long    %12.0g                Total enrolment in 6eme and 5eme
+med_enrol       float   %9.0g                 Median target enrolment within commune
+n_comm          long    %12.0g                
+
+. 
+. 
+. * Identifiant ecole
+. isid id_infra
+
+. 
+. 
+. * Variables obligatoires
+. foreach v in COMMUNE size_label target_enrol {
+  2. 
+.     capture confirm variable `v'
+  3. 
+.     if _rc {
+  4. 
+.         di as error ///
+>             "Variable `v' absente de ecoles_size_classified.dta."
+  5. 
+.         exit 111
+  6.     }
+  7. }
+
+. 
+. 
+. * commune_bloc doit normalement deja exister
+. capture confirm variable commune_bloc
+
+. 
+. if _rc {
+. 
+.     di as error "-------------------------------------------------------"
+-------------------------------------------------------
+.     di as error "ATTENTION : commune_bloc n'existe pas dans le fichier."
+ATTENTION : commune_bloc n'existe pas dans le fichier.
+.     di as error "-------------------------------------------------------"
+-------------------------------------------------------
+. 
+.     * Si le label existe, on peut reconstruire le pool
+.     * a partir de commune_bloc_label.
+.     capture confirm variable commune_bloc_label
+. 
+.     if !_rc {
+. 
+.         di as result ///
+>             "commune_bloc_label trouve : reconstruction de commune_bloc."
+. 
+.         egen long commune_bloc = group(commune_bloc_label)
+. 
+.     }
+.     else {
+. 
+.         di as result ///
+>             "Aucun pool pre-construit trouve."
+Aucun pool pre-construit trouve.
+. 
+.         di as result ///
+>             "Construction de commune_bloc a partir de COMMUNE, avec fusion" ///
+>             " automatique des communes sous le seuil."
+Construction de commune_bloc a partir de COMMUNE, avec fusion automatique des communes sous le seuil.
+. 
+.         *----------------------------------------------------------------*
+.         * AUTOMATED CROSS-COMMUNE FUSION - MULTI-HOP, DEPARTMENT-STRICT,
+.         * MULTI-COMMUNE CUMULATION
+.         *----------------------------------------------------------------*
+.         * Rules (as specified by the PI):
+.         *   (1) If no DIRECTLY adjacent commune has spare capacity, the
+.         *       search extends via neighbours-of-neighbours (multi-hop),
+.         *       using the SHORTEST CUMULATIVE centroid distance -
+.         *       implemented via Floyd-Warshall over the full commune
+.         *       adjacency graph.
+.         *   (2) If a single partner commune's surplus is not enough to
+.         *       reach $MIN_BLOCK_SIZE, MULTIPLE different communes are
+.         *       cumulated into one pool, always respecting nearest-
+.         *       cumulative-distance-first.
+.         *   (3) Department boundary (Zou vs Atlantique) is NEVER crossed.
+.         *       This is enforced STRUCTURALLY: an edge is only ever
+.         *       created between two communes in $neighbor_csv when they
+.         *       belong to the SAME department. Since Floyd-Warshall can
+.         *       only route through edges that exist, no multi-hop path
+.         *       can ever transit through the other department either -
+.         *       the constraint holds by construction, not by a filter
+.         *       applied after the fact.
+.         * If, even after multi-hop cumulation, a cluster still cannot
+.         * reach $MIN_BLOCK_SIZE within its own department, it is flagged
+.         * for manual PI review and the script stops (exit 198).
+. 
+.         gen str120 commune_bloc_label = COMMUNE
+. 
+.         bysort COMMUNE: gen long pool_N0 = _N
+.         gen byte pool0_small = pool_N0 < $MIN_BLOCK_SIZE
+. 
+.         quietly count if pool0_small == 1
+.         local n_need_cross = r(N)
+. 
+.         if `n_need_cross' > 0 {
+. 
+.             di as error "`n_need_cross' ecole(s) sont dans une commune de moins de" ///
+>                 " $MIN_BLOCK_SIZE ecoles. Fusion multi-sauts (distance cumulee)," ///
+>                 " meme departement strict, cumul de plusieurs communes si necessaire."
+10 ecole(s) sont dans une commune de moins de 6 ecoles. Fusion multi-sauts (distance cumulee), meme departement strict, 
+> cumul de plusieurs communes si necessaire.
+. 
+.             capture confirm file "$neighbor_csv"
+.             if _rc {
+.                 di as error "Fichier de communes limitrophes introuvable :"
+.                 di as error "$neighbor_csv"
+.                 di as error "Placez communes_limitrophes_distance_centroides.csv" ///
+>                     " dans $datadir, puis relancez a partir de cette section."
+. 
+.                 preserve
+.                     keep if pool0_small==1
+.                     duplicates drop COMMUNE DEPARTEMENT, force
+.                     keep COMMUNE DEPARTEMENT
+.                     export excel using "$outputdir/communes_needing_cross_fusion.xlsx", ///
+>                         firstrow(variables) replace
+.                 restore
+.                 exit 198
+.             }
+. 
+.             *------------------------------------------------------------------*
+.             * A. Liste des communes presentes, indexees 1..nC, avec departement
+.             *------------------------------------------------------------------*
+.             local nC = 0
+.             preserve
+.                 keep COMMUNE DEPARTEMENT
+.                 duplicates drop COMMUNE DEPARTEMENT, force
+
+Duplicates in terms of COMMUNE DEPARTEMENT
+
+(139 observations deleted)
+.                 sort COMMUNE
+.                 local nC = _N
+.                 forvalues i = 1/`nC' {
+  2.                     local comm_`i' = COMMUNE[`i']
+  3.                     local dept_`i' = DEPARTEMENT[`i']
+  4.                 }
+.             restore
+. 
+.             * Taille (nb ecoles) de chaque commune, dans le meme index
+.             forvalues i = 1/`nC' {
+  2.                 quietly count if COMMUNE == "`comm_`i''"
+  3.                 local size_`i'  = r(N)
+  4.                 local clu_`i'   = `i'          // union-find : chacun son propre cluster
+  5.                 local total_`i' = `size_`i''   // taille cumulee du cluster
+  6.             }
+. 
+.             *------------------------------------------------------------------*
+.             * B. Aretes du crosswalk (voisins directs), extraites en locals
+.             *------------------------------------------------------------------*
+.             local nE = 0
+.             preserve
+.                 import delimited using "$neighbor_csv", clear varnames(1) case(preserve)
+(encoding automatically selected: ISO-8859-1)
+(3 vars, 68 obs)
+.                 rename Commune_Principale COMMUNE
+.                 rename Commune_Limitrophe neighbor_COMMUNE
+.                 rename Distance_Centroides_KM dist_km
+.                 replace COMMUNE          = strtrim(stritrim(upper(COMMUNE)))
+(68 real changes made)
+.                 replace neighbor_COMMUNE = strtrim(stritrim(upper(neighbor_COMMUNE)))
+(68 real changes made)
+.                 local nE = _N
+.                 forvalues e = 1/`nE' {
+  2.                     local efrom_`e' = COMMUNE[`e']
+  3.                     local eto_`e'   = neighbor_COMMUNE[`e']
+  4.                     local edist_`e' = dist_km[`e']
+  5.                 }
+.             restore
+. 
+.             *------------------------------------------------------------------*
+.             * C. Matrice de distances directes : Inf par defaut, 0 diagonale,
+.             *    UNIQUEMENT si meme departement (contrainte stricte, structurelle)
+.             *------------------------------------------------------------------*
+.             tempname D
+.             matrix `D' = J(`nC', `nC', 1e9)
+.             forvalues i = 1/`nC' {
+  2.                 matrix `D'[`i',`i'] = 0
+  3.             }
+. 
+.             forvalues e = 1/`nE' {
+  2.                 local fi = .
+  3.                 local tj = .
+  4.                 forvalues i = 1/`nC' {
+  5.                     if "`comm_`i''" == "`efrom_`e''" local fi = `i'
+  6.                     if "`comm_`i''" == "`eto_`e''"   local tj = `i'
+  7.                 }
+  8.                 if `fi' < . & `tj' < . {
+  9.                     if "`dept_`fi''" == "`dept_`tj''" {
+ 10.                         local cur = `D'[`fi',`tj']
+ 11.                         if `edist_`e'' < `cur' {
+ 12.                             matrix `D'[`fi',`tj'] = `edist_`e''
+ 13.                             matrix `D'[`tj',`fi'] = `edist_`e''
+ 14.                         }
+ 15.                     }
+ 16.                 }
+ 17.             }
+. 
+.             *------------------------------------------------------------------*
+.             * D. Floyd-Warshall (Mata, matrice pure - aucun chemin ne peut
+.             *    traverser un autre departement puisque ces aretes n'existent
+.             *    simplement pas dans D)
+.             *------------------------------------------------------------------*
+.             mata:
+------------------------------------------------- mata (type end to exit) ----------------------------------------------
+:     nC_m  = strtoreal(st_local("nC"))
+
+:     minsz = strtoreal(st_local("minblocksize"))
+
+: 
+:     commname = J(nC_m, 1, "")
+
+:     cursize  = J(nC_m, 1, .)
+
+:     reserve  = J(nC_m, 1, .)
+
+: 
+:     for (i_m=1; i_m<=nC_m; i_m++) {
+> 
+>         commname[i_m] = ///
+>             st_local("comm_" + strofreal(i_m))
+> 
+>         cursize[i_m] = ///
+>             strtoreal( ///
+>                 st_local("cur_size_" + strofreal(i_m)) ///
+>             )
+> 
+>         reserve[i_m] = ///
+>             strtoreal( ///
+>                 st_local("reserve_for_mata_" + strofreal(i_m)) ///
+>             )
+>     }
+
+: 
+:     D_m = st_matrix(st_local("D_matname"))
+nothing found where name expected
+             st_matrix():  3300  argument out of range
+                 <istmt>:     -  function returned error
+(113 lines skipped)
+------------------------------------------------------------------------------------------------------------------------
+r(3300);
+. 
+.             *------------------------------------------------------------------*
+.             * F. FALLBACK : fusion COMPLETE (comme l'ancienne version) pour les
+.             *    communes encore sous le seuil apres epuisement du surplus
+.             *    disponible en Section E. On reutilise la logique Kruskal
+.             *    (union-find), restreinte a ce sous-ensemble, et en partant
+.             *    de `cur_size_`i'' (deja augmente par les prets partiels
+.             *    recus en E, le cas echeant) plutot que de la taille d'origine.
+.             *------------------------------------------------------------------*
+. 
+.             forvalues i = 1/`nC' {
+  2.                 local clu_`i'         = `i'
+  3.                 local fb_total_`i'    = `cur_size_`i''
+  4.                 local fb_eligible_`i' = (`cur_size_`i'' < $MIN_BLOCK_SIZE)
+  5.             }
+. 
+.             preserve
+.                 use `pairs_ds', clear
+.                 sort dist
+.                 local nP = _N
+. 
+.                 forvalues r = 1/`nP' {
+  2.                     local a = i1[`r']
+  3.                     local b = i2[`r']
+  4. 
+.                     if `fb_eligible_`a'' | `fb_eligible_`b'' {
+  5. 
+.                         local ra = `a'
+  6.                         while `clu_`ra'' != `ra' {
+  7.                             local ra = `clu_`ra''
+  8.                         }
+  9.                         local rb = `b'
+ 10.                         while `clu_`rb'' != `rb' {
+ 11.                             local rb = `clu_`rb''
+ 12.                         }
+ 13. 
+.                         if `ra' != `rb' {
+ 14.                             if `fb_total_`ra'' < $MIN_BLOCK_SIZE | `fb_total_`rb'' < $MIN_BLOCK_SIZE {
+ 15.                                 local new_total    = `fb_total_`ra'' + `fb_total_`rb''
+ 16.                                 local clu_`rb'     = `ra'
+ 17.                                 local fb_total_`ra' = `new_total'
+ 18.                             }
+ 19.                         }
+ 20.                     }
+ 21.                 }
+.             restore
+. 
+.             *------------------------------------------------------------------*
+.             * G. RESOLUTION DES LABELS FINAUX
+.             *
+.             * Trois types de pool derives peuvent maintenant coexister :
+.             *   (1) Commune autonome (jamais donneuse ni receveuse) : son
+.             *       propre nom, sa taille d'origine.
+.             *   (2) Commune DONNEUSE (a prete une partie de son surplus) :
+.             *       son propre nom SEUL (pool independant), avec le nombre
+.             *       EXACT de ses ecoles restantes (cur_size_i), PAS le total
+.             *       avant pret.
+.             *   (3) Commune RECEVEUSE (a recu un ou plusieurs prets) : label
+.             *       combine (son nom + les noms de TOUS les donneurs qui ont
+.             *       contribue), avec le nombre EXACT du pool derive (== le
+.             *       minimum requis, jamais le total brut des communes
+.             *       impliquees).
+.             *   (4) Fusion FALLBACK complete (Section F) : label combine de
+.             *       TOUTES les communes du cluster fallback, taille = somme
+.             *       complete (comme l'ancienne logique, car ici il s'agit
+.             *       d'une fusion totale, pas d'un pret partiel).
+.             *
+.             * NOTE DE ROBUSTESSE : la resolution de racine union-find
+.             * ci-dessous utilise une variable intermediaire simple (`cur')
+.             * plutot qu'une reference triplement imbriquee du type
+.             * `clu_`fb_root_`i''' - cette derniere syntaxe (2 backticks
+.             * pour 3 apostrophes) est un desequilibre de guillemets qui
+.             * provoque un "invalid name" / r(198) reproductible en Stata.
+.             * Le meme motif sur, plus loin, `comm_`jidx'' etc. reste a 2
+.             * niveaux d'imbrication (backticks = apostrophes), qui EST
+.             * valide - la regle est : ne jamais depasser 2 niveaux sans
+.             * passer par une variable intermediaire.
+.             *------------------------------------------------------------------*
+. 
+.             forvalues i = 1/`nC' {
+  2.                 local cur = `i'
+  3.                 while `clu_`cur'' != `cur' {
+  4.                     local cur = `clu_`cur''
+  5.                 }
+  6.                 local fb_root_`i' = `cur'
+  7.             }
+. 
+.             local fb_roots_seen ""
+.             local any_unresolved = 0
+. 
+.             * --- (4) Clusters fallback (fusion complete) ---------------------
+.             forvalues i = 1/`nC' {
+  2.                 if `fb_eligible_`i'' {
+  3.                     local r = `fb_root_`i''
+  4.                     local in_seen : list r in fb_roots_seen
+  5.                     if !`in_seen' {
+  6.                         local fb_roots_seen "`fb_roots_seen' `r'"
+  7. 
+.                         local members ""
+  8.                         forvalues j = 1/`nC' {
+  9.                             if `fb_eligible_`j'' & `fb_root_`j'' == `r' {
+ 10.                                 local members "`members' `comm_`j''"
+ 11.                             }
+ 12.                         }
+ 13.                         local members : list sort members
+ 14.                         local lbl : subinstr local members " " " + ", all
+ 15.                         local clu_total = `fb_total_`r''
+ 16. 
+.                         if `clu_total' < $MIN_BLOCK_SIZE {
+ 17.                             di as error "  Pool INSUFFISANT meme apres pret de surplus et fusion fallback : `lbl' (
+> `clu_total' ecoles) - revue PI requise."
+ 18.                             local any_unresolved = 1
+ 19.                         }
+ 20.                         else {
+ 21.                             di as result "  Pool fusionne (fallback, fusion complete) : `lbl' (`clu_total' ecoles)"
+ 22.                         }
+ 23. 
+.                         foreach cc of local members {
+ 24.                             quietly replace commune_bloc_label = "`lbl'" if COMMUNE == "`cc'"
+ 25.                         }
+ 26.                     }
+ 27.                 }
+ 28.             }
+. 
+.             * --- (2)+(3) Communes donneuses / receveuses (pret partiel) -------
+.             * NOTE : une commune qui a fini en fallback (4) est deja etiquetee
+.             * ci-dessus et n'entre pas dans cette section (fb_eligible==0 pour
+.             * les autres, et un donneur n'est jamais fb_eligible puisqu'il
+.             * termine toujours avec cur_size >= MIN_BLOCK_SIZE).
+. 
+.             set seed $SEED_FUSION
+.             capture drop _rand_fusion
+.             gen double _rand_fusion = runiform()
+.             capture drop _claimed_fusion
+.             gen byte _claimed_fusion = 0
+. 
+.             forvalues i = 1/`nC' {
+  2.                 if !`fb_eligible_`i'' & "`contrib_`i''" != "" {
+  3. 
+.                     * Commune receveuse : label combine = son nom + tous ses
+.                     * donneurs, taille exacte = cur_size_i (== MIN_BLOCK_SIZE).
+.                     local members "`comm_`i''"
+  4.                     foreach pr of local contrib_`i' {
+  5.                         local jidx    = substr("`pr'", 1, strpos("`pr'",":") - 1)
+  6.                         local members "`members' `comm_`jidx''"
+  7.                     }
+  8.                     local members : list sort members
+  9.                     local lbl : subinstr local members " " " + ", all
+ 10.                     local final_size = `cur_size_`i''
+ 11. 
+.                     di as result "  Pool fusionne (pret de surplus) : `lbl' (`final_size' ecoles)"
+ 12. 
+.                     * Toutes les ecoles d'origine de la commune receveuse
+.                     * rejoignent ce label.
+.                     quietly replace commune_bloc_label = "`lbl'" if COMMUNE == "`comm_`i''"
+ 13. 
+.                     * Pour chaque donneur ayant contribue, on preleve
+.                     * exactement `amount' de ses ecoles NON ENCORE
+.                     * reclamees (tirage aleatoire reproductible via
+.                     * $SEED_FUSION) et on les rattache a ce meme label.
+.                     foreach pr of local contrib_`i' {
+ 14.                         local jidx   = substr("`pr'", 1, strpos("`pr'",":") - 1)
+ 15.                         local amount = substr("`pr'", strpos("`pr'",":") + 1, .)
+ 16.                         local jname  = "`comm_`jidx''"
+ 17. 
+.                         quietly count if COMMUNE=="`jname'" & _claimed_fusion==0
+ 18.                         local n_avail = r(N)
+ 19. 
+.                         preserve
+ 20.                             quietly keep if COMMUNE=="`jname'" & _claimed_fusion==0
+ 21.                             quietly sort _rand_fusion
+ 22.                             quietly keep in 1/`amount'
+ 23.                             quietly keep id_infra
+ 24.                             tempfile _claim_ids
+ 25.                             quietly save `_claim_ids', replace
+ 26.                         restore
+ 27. 
+.                         quietly merge 1:1 id_infra using `_claim_ids', ///
+>                             gen(_claim_match)
+ 28.                         quietly replace commune_bloc_label = "`lbl'" if _claim_match==3
+ 29.                         quietly replace _claimed_fusion     = 1      if _claim_match==3
+ 30.                         quietly drop _claim_match
+ 31.                     }
+ 32.                 }
+ 33.             }
+. 
+.             drop _rand_fusion _claimed_fusion
+. 
+.             * --- Log de toutes les fusions effectuees (pools avec >1 commune) --
+.             preserve
+.                 keep if strpos(commune_bloc_label, " + ") > 0
+.                 quietly count
+.                 if r(N) > 0 {
+.                     duplicates drop commune_bloc_label, force
+.                     keep commune_bloc_label
+.                     gen str30 fusion_type = "cross-commune (multi-sauts, meme departement, automated)"
+.                     gen str20 fusion_date = "$S_DATE"
+.                     export excel using "$outputdir/log_fusion_strates.xlsx", ///
+>                         firstrow(variables) replace sheet("cross_commune")
+.                     di as result "Log de fusion cross-commune ecrit (log_fusion_strates.xlsx, feuille cross_commune)."
+.                 }
+.             restore
+. 
+.             * --- Arret si un cluster reste insuffisant meme apres multi-sauts --
+.             if `any_unresolved' == 1 {
+.                 preserve
+.                     bysort commune_bloc_label: gen long clu_check_n = _N
+.                     keep if clu_check_n < $MIN_BLOCK_SIZE
+.                     keep COMMUNE DEPARTEMENT commune_bloc_label clu_check_n
+.                     duplicates drop
+.                     export excel using "$outputdir/communes_needing_cross_fusion.xlsx", ///
+>                         firstrow(variables) replace
+.                 restore
+.                 di as result "Liste ecrite : communes_needing_cross_fusion.xlsx." ///
+>                     " Aucun partenaire (direct ou multi-sauts) disponible dans le" ///
+>                     " meme departement. Resolvez manuellement, puis relancez."
+.                 exit 198
+.             }
+. 
+.             drop pool_N0 pool0_small
+. 
+.         }
+r(3300);
+.         else {
+.             di as result "Aucune fusion cross-commune necessaire : toutes les" ///
+>                 " communes atteignent $MIN_BLOCK_SIZE ecoles."
+.         }
+. 
+.         egen long commune_bloc = group(commune_bloc_label)
+. 
+.     }
+r(3300);
+. }
+r(3300);
+
+end of do-file
+
+r(3300);
+
+. do "C:\Users\moust\AppData\Local\Temp\STD85f4_000000.tmp"
+
+. *======================================================================*
+. * PROJECT     : Gender Norms RCT - Randomization of Schools
+. * PURPOSE     : Stratified block randomization
+. *
+. * DESIGN:
+. *   1. Schools are classified Small/Large using the commune median.
+. *   2. Blocks are constructed within commune/pool.
+. *   3. Each block contains approximately 6 schools.
+. *   4. Small and Large schools are distributed separately across blocks,
+. *      so their numbers differ by at most 1 across blocks.
+. *   5. Only communes with < 6 schools are fused with other commune(s)
+. *      before block construction, using MULTI-HOP fusion:
+. *        - if no directly adjacent commune has spare capacity, the
+. *          search extends via neighbours-of-neighbours (shortest
+. *          CUMULATIVE centroid distance, Floyd-Warshall),
+. *        - if one partner commune is still not enough to reach the
+. *          minimum, MULTIPLE communes are cumulated into one pool,
+. *          always following nearest-cumulative-distance first,
+. *        - fusion NEVER crosses the Zou/Atlantique department
+. *          boundary: this is enforced structurally, by never creating
+. *          an edge between two communes of different departments, so
+. *          no multi-hop path can ever transit through the other
+. *          department either.
+. *   6. Treatment is randomized within final blocks.
+. *======================================================================*
+. 
+. version 17
+
+. clear all
+
+. set more off
+
+. set linesize 120
+
+. 
+. * Variable name abbreviation is disabled for the ENTIRE script. Without
+. * this, a command like "capture drop bloc" - issued defensively before
+. * (re)creating the variable "bloc" - can silently resolve to a totally
+. * different, longer variable if "bloc" happens to be a UNIQUE prefix
+. * match for it at that point in the dataset (e.g. "block_number", since
+. * neither "bloc" nor "bloc_n"/"bloc_n_arm" exist yet when that command
+. * runs). Stata does not warn when an abbreviation match is unique - it
+. * just silently drops whichever variable matches, which previously
+. * deleted block_number moments after it was confirmed complete. Turning
+. * abbreviation off makes every variable reference in this do-file
+. * resolve to its EXACT name only, eliminating this entire bug class.
+. set varabbrev off
+
+. 
+. *======================================================================*
+. * 0. SETTINGS
+. *======================================================================*
+. 
+. cd "C:\RONALDO\CKDEV\GENDER NORMS\Randomization"
+C:\RONALDO\CKDEV\GENDER NORMS\Randomization
+
+. 
+. global datadir   "Datasets"
+
+. global outputdir "Outputs"
+
+. 
+. global mergeoutdir "$outputdir/Data"
+
+. global infile "$mergeoutdir/master_x_gender_norm.xlsx"
+
+. 
+. global neighbor_csv "$datadir/communes_limitrophes_distance_centroides.csv"
+
+. 
+. global MIN_BLOCK_SIZE 6
+
+. global N_ARMS 3
+
+. 
+. global SEED_BLOCKS 20260730
+
+. global SEED_ARMS   20260731
+
+. global SEED_PARENT 20260801
+
+. global SEED_FUSION 20260802   // seed for selecting WHICH specific schools
+
+.                                // a self-sufficient donor commune lends to
+.                                // an undersized neighbour (see Section 3B)
+. 
+. capture mkdir "$outputdir"
+
+. 
+. capture confirm file "$infile"
+
+. if _rc {
+.     di as error "Input file not found:"
+.     di as error "$infile"
+.     exit 601
+. }
+
+. 
+. * Timestamp
+. local timestamp : di %tcCCYY-NN-DD_HH-MM-SS clock("$S_DATE $S_TIME", "DMYhms")
+
+. local timestamp = subinstr("`timestamp'", ":", "", .)
+
+. local timestamp = subinstr("`timestamp'", " ", "_", .)
+
+. 
+. capture log close

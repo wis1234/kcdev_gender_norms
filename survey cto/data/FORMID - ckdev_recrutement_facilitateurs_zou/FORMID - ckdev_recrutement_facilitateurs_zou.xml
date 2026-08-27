@@ -1,0 +1,290 @@
+<?xml version="1.0"?>
+<h:html xmlns="http://www.w3.org/2002/xforms" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:h="http://www.w3.org/1999/xhtml" xmlns:jr="http://openrosa.org/javarosa" xmlns:odk="http://www.opendatakit.org/xforms" xmlns:orx="http://openrosa.org/xforms/" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <h:head>
+    <h:title>CKDev - Recrutement de Facilitateurs (Zou)</h:title>
+    <model>
+      <instance>
+        <ckdev_recrutement_facilitateurs_zou id="ckdev_recrutement_facilitateurs_zou">
+          <g_infos_candidat>
+            <nom/>
+            <telephone/>
+            <email/>
+            <commune_residence/>
+            <commune_residence_passee/>
+            <note_condition_residence/>
+            <possede_bac/>
+            <note_condition_bac/>
+            <possede_bepc/>
+          </g_infos_candidat>
+          <g_competences>
+            <langues/>
+            <aptitude_animation/>
+            <experience_animation/>
+            <maitrise_informatique/>
+            <aptitude_redaction/>
+            <aptitude_equipe_pression/>
+            <motivations/>
+          </g_competences>
+          <g_pieces_jointes>
+            <note_pieces/>
+            <lettre_motivation/>
+            <cv/>
+            <copie_diplome/>
+            <copie_cni/>
+            <preuve_residence/>
+          </g_pieces_jointes>
+          <g_final>
+            <note_final/>
+            <consentement/>
+          </g_final>
+          <meta>
+            <instanceID/>
+          </meta>
+        </ckdev_recrutement_facilitateurs_zou>
+      </instance>
+      <bind nodeset="/ckdev_recrutement_facilitateurs_zou/g_infos_candidat/nom" required="true()" type="string"/>
+      <bind constraint="regex(., '^01[0-9]{8}$')" jr:constraintMsg="Veuillez entrer un numéro au format 01XXXXXXXX (ex: 0196000000)." nodeset="/ckdev_recrutement_facilitateurs_zou/g_infos_candidat/telephone" required="true()" type="string"/>
+      <bind constraint="regex(., '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+.[A-Za-z]{2,}$')" jr:constraintMsg="Veuillez entrer une adresse email valide." nodeset="/ckdev_recrutement_facilitateurs_zou/g_infos_candidat/email" type="string"/>
+      <bind nodeset="/ckdev_recrutement_facilitateurs_zou/g_infos_candidat/commune_residence" required="true()" type="select1"/>
+      <bind nodeset="/ckdev_recrutement_facilitateurs_zou/g_infos_candidat/commune_residence_passee" type="select1"/>
+      <bind nodeset="/ckdev_recrutement_facilitateurs_zou/g_infos_candidat/note_condition_residence" original="note" readonly="true()" relevant=" /ckdev_recrutement_facilitateurs_zou/g_infos_candidat/commune_residence  = 'autre' and  /ckdev_recrutement_facilitateurs_zou/g_infos_candidat/commune_residence_passee  != 'oui'" type="string"/>
+      <bind nodeset="/ckdev_recrutement_facilitateurs_zou/g_infos_candidat/possede_bac" required="true()" type="select1"/>
+      <bind nodeset="/ckdev_recrutement_facilitateurs_zou/g_infos_candidat/note_condition_bac" original="note" readonly="true()" relevant=" /ckdev_recrutement_facilitateurs_zou/g_infos_candidat/possede_bac  != 'oui'" type="string"/>
+      <bind nodeset="/ckdev_recrutement_facilitateurs_zou/g_infos_candidat/possede_bepc" type="select1"/>
+      <bind nodeset="/ckdev_recrutement_facilitateurs_zou/g_competences/langues" required="true()" type="select"/>
+      <bind nodeset="/ckdev_recrutement_facilitateurs_zou/g_competences/aptitude_animation" required="true()" type="select1"/>
+      <bind nodeset="/ckdev_recrutement_facilitateurs_zou/g_competences/experience_animation" relevant=" /ckdev_recrutement_facilitateurs_zou/g_competences/aptitude_animation  = 'oui'" type="string"/>
+      <bind nodeset="/ckdev_recrutement_facilitateurs_zou/g_competences/maitrise_informatique" required="true()" type="select"/>
+      <bind nodeset="/ckdev_recrutement_facilitateurs_zou/g_competences/aptitude_redaction" required="true()" type="select1"/>
+      <bind nodeset="/ckdev_recrutement_facilitateurs_zou/g_competences/aptitude_equipe_pression" required="true()" type="select1"/>
+      <bind nodeset="/ckdev_recrutement_facilitateurs_zou/g_competences/motivations" required="true()" type="string"/>
+      <bind nodeset="/ckdev_recrutement_facilitateurs_zou/g_pieces_jointes/note_pieces" original="note" readonly="true()" type="string"/>
+      <bind nodeset="/ckdev_recrutement_facilitateurs_zou/g_pieces_jointes/lettre_motivation" required="true()" type="binary"/>
+      <bind nodeset="/ckdev_recrutement_facilitateurs_zou/g_pieces_jointes/cv" required="true()" type="binary"/>
+      <bind nodeset="/ckdev_recrutement_facilitateurs_zou/g_pieces_jointes/copie_diplome" required="true()" type="binary"/>
+      <bind nodeset="/ckdev_recrutement_facilitateurs_zou/g_pieces_jointes/copie_cni" required="true()" type="binary"/>
+      <bind nodeset="/ckdev_recrutement_facilitateurs_zou/g_pieces_jointes/preuve_residence" required="true()" type="binary"/>
+      <bind nodeset="/ckdev_recrutement_facilitateurs_zou/g_final/note_final" original="note" readonly="true()" type="string"/>
+      <bind nodeset="/ckdev_recrutement_facilitateurs_zou/g_final/consentement" required="true()" type="string"/>
+      <bind calculate="concat('uuid:', uuid())" nodeset="/ckdev_recrutement_facilitateurs_zou/meta/instanceID" readonly="true()" type="string"/>
+    </model>
+  </h:head>
+  <h:body>
+    <group appearance="field-list" ref="/ckdev_recrutement_facilitateurs_zou/g_infos_candidat">
+      <label>I. INFORMATIONS PERSONNELLES DU CANDIDAT</label>
+      <input ref="/ckdev_recrutement_facilitateurs_zou/g_infos_candidat/nom">
+        <label>Nom(s) et Prénom(s) :</label>
+      </input>
+      <input ref="/ckdev_recrutement_facilitateurs_zou/g_infos_candidat/telephone">
+        <label>Numéro de téléphone :</label>
+      </input>
+      <input ref="/ckdev_recrutement_facilitateurs_zou/g_infos_candidat/email">
+        <label>Adresse e-mail :</label>
+      </input>
+      <select1 appearance="minimal" ref="/ckdev_recrutement_facilitateurs_zou/g_infos_candidat/commune_residence">
+        <label>1. Dans quelle commune du département du Zou résidez-vous actuellement ?</label>
+        <item>
+          <label>Abomey</label>
+          <value>abomey</value>
+        </item>
+        <item>
+          <label>Agbangnizoun</label>
+          <value>agbangnizoun</value>
+        </item>
+        <item>
+          <label>Bohicon</label>
+          <value>bohicon</value>
+        </item>
+        <item>
+          <label>Cové</label>
+          <value>cové</value>
+        </item>
+        <item>
+          <label>Djidja</label>
+          <value>djidja</value>
+        </item>
+        <item>
+          <label>Ouinhi</label>
+          <value>ouinhi</value>
+        </item>
+        <item>
+          <label>Za-Kpota</label>
+          <value>za-kpota</value>
+        </item>
+        <item>
+          <label>Zagbanado</label>
+          <value>zagbanado</value>
+        </item>
+        <item>
+          <label>Zangnanado</label>
+          <value>zangnanado</value>
+        </item>
+        <item>
+          <label>Autre commune (Non éligible)</label>
+          <value>autre</value>
+        </item>
+      </select1>
+      <select1 ref="/ckdev_recrutement_facilitateurs_zou/g_infos_candidat/commune_residence_passee">
+        <label>2. Si vous n'y résidez plus, avez-vous déjà résidé dans le Zou ?</label>
+        <item>
+          <label>Oui</label>
+          <value>oui</value>
+        </item>
+        <item>
+          <label>Non</label>
+          <value>non</value>
+        </item>
+      </select1>
+      <input ref="/ckdev_recrutement_facilitateurs_zou/g_infos_candidat/note_condition_residence">
+        <label>⚠️ Condition non remplie : Pour postuler, vous devez être résident ou ancien résident du Zou.</label>
+      </input>
+      <select1 ref="/ckdev_recrutement_facilitateurs_zou/g_infos_candidat/possede_bac">
+        <label>Possédez-vous au moins le Baccalauréat (BAC) ?</label>
+        <item>
+          <label>Oui</label>
+          <value>oui</value>
+        </item>
+        <item>
+          <label>Non</label>
+          <value>non</value>
+        </item>
+      </select1>
+      <input ref="/ckdev_recrutement_facilitateurs_zou/g_infos_candidat/note_condition_bac">
+        <label>⚠️ Condition non remplie : Le Baccalauréat (BAC) est obligatoire pour postuler.</label>
+      </input>
+      <select1 ref="/ckdev_recrutement_facilitateurs_zou/g_infos_candidat/possede_bepc">
+        <label>Possédez-vous également le BEPC ? (Atout)</label>
+        <item>
+          <label>Oui</label>
+          <value>oui</value>
+        </item>
+        <item>
+          <label>Non</label>
+          <value>non</value>
+        </item>
+      </select1>
+    </group>
+    <group appearance="field-list" ref="/ckdev_recrutement_facilitateurs_zou/g_competences">
+      <label>II. COMPÉTENCES ET APTITUDES</label>
+      <select appearance="minimal" ref="/ckdev_recrutement_facilitateurs_zou/g_competences/langues">
+        <label>1. Langues maîtrisées (Parler et comprendre) :</label>
+        <item>
+          <label>Français</label>
+          <value>francais</value>
+        </item>
+        <item>
+          <label>Fon</label>
+          <value>fon</value>
+        </item>
+        <item>
+          <label>Aizo</label>
+          <value>aizo</value>
+        </item>
+        <item>
+          <label>Mahi</label>
+          <value>mahi</value>
+        </item>
+        <item>
+          <label>Autre langue locale</label>
+          <value>autres</value>
+        </item>
+      </select>
+      <select1 ref="/ckdev_recrutement_facilitateurs_zou/g_competences/aptitude_animation">
+        <label>2. Avez-vous une expérience ou une aptitude pour animer et mobiliser un groupe de personnes ?</label>
+        <item>
+          <label>Oui</label>
+          <value>oui</value>
+        </item>
+        <item>
+          <label>Non</label>
+          <value>non</value>
+        </item>
+      </select1>
+      <input ref="/ckdev_recrutement_facilitateurs_zou/g_competences/experience_animation">
+        <label>Si oui, veuillez décrire brièvement cette expérience :</label>
+      </input>
+      <select appearance="minimal" ref="/ckdev_recrutement_facilitateurs_zou/g_competences/maitrise_informatique">
+        <label>3. Outils informatiques et applications maîtrisés :</label>
+        <item>
+          <label>Pack Office (Word, Excel, PowerPoint)</label>
+          <value>pack_office</value>
+        </item>
+        <item>
+          <label>Smartphone/Tablette</label>
+          <value>smartphone</value>
+        </item>
+        <item>
+          <label>KoboCollect</label>
+          <value>kobo</value>
+        </item>
+        <item>
+          <label>Survey Solutions</label>
+          <value>survey_solutions</value>
+        </item>
+        <item>
+          <label>SurveyCTO</label>
+          <value>survey_cto</value>
+        </item>
+        <item>
+          <label>Autres applications</label>
+          <value>autres_apps</value>
+        </item>
+      </select>
+      <select1 ref="/ckdev_recrutement_facilitateurs_zou/g_competences/aptitude_redaction">
+        <label>4. Êtes-vous capable de rédiger un rapport clair, concis et bien structuré ?</label>
+        <item>
+          <label>Oui</label>
+          <value>oui</value>
+        </item>
+        <item>
+          <label>Non</label>
+          <value>non</value>
+        </item>
+      </select1>
+      <select1 ref="/ckdev_recrutement_facilitateurs_zou/g_competences/aptitude_equipe_pression">
+        <label>5. Pouvez-vous travailler efficacement en équipe et sous pression ?</label>
+        <item>
+          <label>Oui</label>
+          <value>oui</value>
+        </item>
+        <item>
+          <label>Non</label>
+          <value>non</value>
+        </item>
+      </select1>
+      <input ref="/ckdev_recrutement_facilitateurs_zou/g_competences/motivations">
+        <label>6. En quelques lignes, quelle est votre motivation principale pour ce poste de facilitateur ?</label>
+      </input>
+    </group>
+    <group appearance="field-list" ref="/ckdev_recrutement_facilitateurs_zou/g_pieces_jointes">
+      <label>III. PIÈCES À FOURNIR</label>
+      <input ref="/ckdev_recrutement_facilitateurs_zou/g_pieces_jointes/note_pieces">
+        <label>Veuillez préparer les documents suivants au format numérique (PDF ou image) pour les télécharger.</label>
+      </input>
+      <upload mediatype="text/*,application/pdf,application/vnd.ms-excel,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/zip,application/x-zip,application/x-zip-compressed,image/*,video/*,audio/*" ref="/ckdev_recrutement_facilitateurs_zou/g_pieces_jointes/lettre_motivation">
+        <label>Lettre de motivation adressée à la Directrice du CKDev :</label>
+      </upload>
+      <upload mediatype="text/*,application/pdf,application/vnd.ms-excel,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/zip,application/x-zip,application/x-zip-compressed,image/*,video/*,audio/*" ref="/ckdev_recrutement_facilitateurs_zou/g_pieces_jointes/cv">
+        <label>Curriculum Vitae détaillé :</label>
+      </upload>
+      <upload mediatype="text/*,application/pdf,application/vnd.ms-excel,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/zip,application/x-zip,application/x-zip-compressed,image/*,video/*,audio/*" ref="/ckdev_recrutement_facilitateurs_zou/g_pieces_jointes/copie_diplome">
+        <label>Copie du diplôme le plus élevé (au moins le BAC) :</label>
+      </upload>
+      <upload mediatype="text/*,application/pdf,application/vnd.ms-excel,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/zip,application/x-zip,application/x-zip-compressed,image/*,video/*,audio/*" ref="/ckdev_recrutement_facilitateurs_zou/g_pieces_jointes/copie_cni">
+        <label>Copie de la pièce d'identité (CNI, Passeport) en cours de validité :</label>
+      </upload>
+      <upload mediatype="text/*,application/pdf,application/vnd.ms-excel,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/zip,application/x-zip,application/x-zip-compressed,image/*,video/*,audio/*" ref="/ckdev_recrutement_facilitateurs_zou/g_pieces_jointes/preuve_residence">
+        <label>Preuve de résidence (Facture, Certificat de résidence, etc.) :</label>
+      </upload>
+    </group>
+    <group appearance="field-list" ref="/ckdev_recrutement_facilitateurs_zou/g_final">
+      <label>IV. DÉPÔT DE LA CANDIDATURE</label>
+      <input ref="/ckdev_recrutement_facilitateurs_zou/g_final/note_final">
+        <label>Merci d'avoir complété ce formulaire. Avant de soumettre, vérifiez que toutes vos pièces sont jointes.</label>
+      </input>
+      <trigger ref="/ckdev_recrutement_facilitateurs_zou/g_final/consentement">
+        <label>Je certifie sur l'honneur que les informations fournies dans ce formulaire sont exactes et sincères.</label>
+      </trigger>
+    </group>
+  </h:body>
+</h:html>

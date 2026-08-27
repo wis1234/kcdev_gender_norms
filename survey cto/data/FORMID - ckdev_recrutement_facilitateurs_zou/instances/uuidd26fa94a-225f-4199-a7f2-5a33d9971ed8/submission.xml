@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ckdev_recrutement_facilitateurs_zou durationMillis="428438" id="ckdev_recrutement_facilitateurs_zou" instanceID="uuid:d26fa94a-225f-4199-a7f2-5a33d9971ed8" isComplete="true" lastDurationOffset="2139527" lastPosition="endOfForm" manifest="{&quot;binaries&quot;:{&quot;f-google-forms-03-1784810616755.pdf&quot;:&quot;instance(CKDev - Recrutement de Facilitateurs (Zou))\/ckdev_recrutement_facilitateurs_zou\/g_pieces_jointes[1]\/lettre_motivation[1]&quot;,&quot;f-google-forms-03-1784810646734.pdf&quot;:&quot;instance(CKDev - Recrutement de Facilitateurs (Zou))\/ckdev_recrutement_facilitateurs_zou\/g_pieces_jointes[1]\/cv[1]&quot;,&quot;f-google-forms-03-1784810651913.pdf&quot;:&quot;instance(CKDev - Recrutement de Facilitateurs (Zou))\/ckdev_recrutement_facilitateurs_zou\/g_pieces_jointes[1]\/copie_diplome[1]&quot;,&quot;f-google-forms-03-1784810656236.pdf&quot;:&quot;instance(CKDev - Recrutement de Facilitateurs (Zou))\/ckdev_recrutement_facilitateurs_zou\/g_pieces_jointes[1]\/copie_cni[1]&quot;,&quot;f-google-forms-03-1784810660578.pdf&quot;:&quot;instance(CKDev - Recrutement de Facilitateurs (Zou))\/ckdev_recrutement_facilitateurs_zou\/g_pieces_jointes[1]\/preuve_residence[1]&quot;}}" markedAsCompleteDate="2026-07-23T12:45:23.890Z" speedAuditedFields="" submissionDate="2026-07-23T12:45:23.890Z" validated="true" version="" xmlns="http://opendatakit.org/submissions">
+  <g_infos_candidat>
+    <nom>Ronaldo Agbohou</nom>
+    <telephone>0167419414</telephone>
+    <email>ronaldoagbohou@gmail.com</email>
+    <commune_residence>djidja</commune_residence>
+    <commune_residence_passee>oui</commune_residence_passee>
+    <possede_bac>oui</possede_bac>
+    <possede_bepc>non</possede_bepc>
+  </g_infos_candidat>
+  <g_competences>
+    <langues>francais fon</langues>
+    <aptitude_animation>oui</aptitude_animation>
+    <experience_animation/>
+    <maitrise_informatique>pack_office smartphone kobo</maitrise_informatique>
+    <aptitude_redaction>oui</aptitude_redaction>
+    <aptitude_equipe_pression>oui</aptitude_equipe_pression>
+    <motivations>Tout</motivations>
+  </g_competences>
+  <g_pieces_jointes>
+    <note_pieces/>
+    <lettre_motivation>f-google-forms-03-1784810616755.pdf</lettre_motivation>
+    <cv>f-google-forms-03-1784810646734.pdf</cv>
+    <copie_diplome>f-google-forms-03-1784810651913.pdf</copie_diplome>
+    <copie_cni>f-google-forms-03-1784810656236.pdf</copie_cni>
+    <preuve_residence>f-google-forms-03-1784810660578.pdf</preuve_residence>
+  </g_pieces_jointes>
+  <g_final>
+    <note_final/>
+    <consentement>OK</consentement>
+  </g_final>
+  <meta>
+    <instanceID>uuid:d26fa94a-225f-4199-a7f2-5a33d9971ed8</instanceID>
+  </meta>
+</ckdev_recrutement_facilitateurs_zou>

@@ -1,0 +1,18 @@
+RANDOMIZATION MANIFEST - Gender Norms RCT
+=========================================
+Date/time       : 22 Aug 2026 22:10:05
+Stata version   : 17
+RNG engine      : mt64
+SEED_BLOCKS     : 20260730
+SEED_ARMS       : 20260731
+SEED_PARENT     : 20260801
+SEED_FUSION     : 20260802
+N schools       : 156
+N blocks        : 21
+Minimum block   : 6
+Size rule       : commune median
+Small rule      : <= median
+Large rule      : > median
+Cross-commune fusion : surplus-lending (Mata), department-strict, fallback full-merge
+Checksum        : 156:93(17051):1070665136:3695719219
+Final Excel     : randomization_final.xlsx

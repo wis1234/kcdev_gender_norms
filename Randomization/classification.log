@@ -1,0 +1,892 @@
+------------------------------------------------------------
+      name:  <unnamed>
+       log:  C:\RONALDO\CKDEV\GENDER NORMS\Randomization\cla
+> ssification.log
+  log type:  text
+ opened on:   9 Aug 2026, 00:41:46
+
+. 
+. 
+. *=========================================================
+> ==============
+. * 3. IMPORTATION
+. *=========================================================
+> ==============
+. 
+. display "=================================================
+> ============="
+============================================================
+> ==
+
+. display "IMPORTATION DE LA BASE"
+IMPORTATION DE LA BASE
+
+. display "=================================================
+> ============="
+============================================================
+> ==
+
+. 
+. import delimited using "$input", clear
+(encoding automatically selected: UTF-8)
+(104 vars, 179 obs)
+
+. 
+. display "Nombre initial d'observations : " _N
+Nombre initial d'observations : 179
+
+. 
+. 
+. *=========================================================
+> ==============
+. * 4. VERIFICATION DES VARIABLES
+. *=========================================================
+> ==============
+. 
+. describe
+
+Contains data
+ Observations:           179                  
+    Variables:           104                  
+------------------------------------------------------------
+Variable      Storage   Display    Value
+    name         type    format    label      Variable label
+------------------------------------------------------------
+systemindex     str20   %20s                  system:index
+arrondissement  str15   %15s                  ARRONDISSEMENT
+commune         str13   %13s                  COMMUNE
+departement     str10   %10s                  DEPARTEMENT
+existencebibl~e byte    %8.0g                 EXISTENCEBIBLI
+                                        > OPOURVUEOUVRAGE
+existenceeau    byte    %8.0g                 EXISTENCEEAU
+existenceelect  byte    %8.0g                 EXISTENCEELECT
+existenceexis~f byte    %8.0g                 EXISTENCEEXIST
+                                        > CLOTUREMATDEF
+existenceinfi~t byte    %8.0g                 EXISTENCEINFIR
+                                        > MFONCT
+existenceinfr~t byte    %8.0g                 EXISTENCEINFRA
+                                        > STSPORT
+existenceinte~t byte    %8.0g                 EXISTENCEINTER
+                                        > NET
+existenceinte~r byte    %8.0g                 EXISTENCEINTER
+                                        > NETAPPR
+existenceisol~t byte    %8.0g                 EXISTENCEISOLO
+                                        > IRSFONCT
+existencelabo~s byte    %8.0g                 EXISTENCELABOE
+                                        > QUIPESUTILISES
+existencelatr~s byte    %8.0g                 EXISTENCELATRI
+                                        > NES
+existencelatr~l byte    %8.0g                 EXISTENCELATRI
+                                        > NESSEPAREESFILL
+existencelava~n byte    %8.0g                 EXISTENCELAVAG
+                                        > EMAIN
+existenceunit~e byte    %8.0g                 EXISTENCEUNITE
+                                        > ECOUTEFILLE
+existenceunit~n byte    %8.0g                 EXISTENCEUNITE
+                                        > ECOUTEFILLEFON
+milieu          str6    %9s                   MILIEU
+nbensapeacef    byte    %8.0g                 NBENSAPEACEF
+nbensapeacem    byte    %8.0g                 NBENSAPEACEM
+nbensqualifap~f byte    %8.0g                 NBENSQUALIFAPE
+                                        > ACEF
+nbensqualifap~m byte    %8.0g                 NBENSQUALIFAPE
+                                        > ACEM
+nbensqualifva~f byte    %8.0g                 NBENSQUALIFVAC
+                                        > AUTREF
+nbensqualifva~m byte    %8.0g                 NBENSQUALIFVAC
+                                        > AUTREM
+nbensvacautref  byte    %8.0g                 NBENSVACAUTREF
+nbensvacautrem  byte    %8.0g                 NBENSVACAUTREM
+nbf1ere         int     %8.0g                 NBF1ERE
+nbf2nd          int     %8.0g                 NBF2ND
+nbf3eme         int     %8.0g                 NBF3EME
+nbf4eme         int     %8.0g                 NBF4EME
+nbf5eme         int     %8.0g                 NBF5EME
+nbf6eme         int     %8.0g                 NBF6EME
+nbfillesisolo~s byte    %8.0g                 NBFILLESISOLOI
+                                        > RS
+nbftle          int     %8.0g                 NBFTLE
+nbgp1ere        byte    %8.0g                 NBGP1ERE
+nbgp2nd         byte    %8.0g                 NBGP2ND
+nbgp3eme        byte    %8.0g                 NBGP3EME
+nbgp4eme        byte    %8.0g                 NBGP4EME
+nbgp5eme        byte    %8.0g                 NBGP5EME
+nbgp6eme        byte    %8.0g                 NBGP6EME
+nbgptle         byte    %8.0g                 NBGPTLE
+nbisoloirsfonct byte    %8.0g                 NBISOLOIRSFONC
+                                        > T
+nbm1ere         int     %8.0g                 NBM1ERE
+nbm2nd          int     %8.0g                 NBM2ND
+nbm3eme         int     %8.0g                 NBM3EME
+nbm4eme         int     %8.0g                 NBM4EME
+nbm5eme         int     %8.0g                 NBM5EME
+nbm6eme         int     %8.0g                 NBM6EME
+nbmtle          int     %8.0g                 NBMTLE
+nbplaceassise   int     %8.0g                 NBPLACEASSISE
+nbsallclassam~c byte    %8.0g                 NBSALLCLASSAME
+                                        > NAGHANDIC
+nometablissem~t str38   %38s                  NOMETABLISSEME
+                                        > NT
+quartiervillage str21   %21s                  QUARTIERVILLAG
+                                        > E
+regime          str20   %20s                  REGIME
+sallesclasses~f byte    %8.0g                 SALLESCLASSESM
+                                        > ATDEF
+sallesclasses~t byte    %8.0g                 SALLESCLASSEST
+                                        > OT
+statut          str6    %9s                   STATUT
+built_pct_100~0 float   %9.0g                 
+built_pct_300~0 float   %9.0g                 
+built_pct_500~0 float   %9.0g                 
+built_pct~1000m byte    %8.0g                 built_pct_flag
+                                        > _hors_bornes_1000m
+                                        > _2020
+built_pct~3000m byte    %8.0g                 built_pct_flag
+                                        > _hors_bornes_3000m
+                                        > _2020
+built_pct_fla~_ byte    %8.0g                 built_pct_flag
+                                        > _hors_bornes_500m_
+                                        > 2020
+classifica~2020 str39   %39s                  
+degurba_et~2020 str15   %15s                  
+degurba_l1~2020 str13   %13s                  
+degurba_l2_2020 str24   %24s                  
+dist_dense~2020 float   %9.0g                 
+dist_urban~2020 float   %9.0g                 
+frontiere_cl~20 byte    %8.0g                 frontiere_clas
+                                        > sification_500m_20
+                                        > 20
+giga_country    str5    %9s                   
+giga_id         str36   %36s                  
+giga_iso3       str3    %9s                   
+giga_level      str9    %9s                   
+giga_name       str37   %37s                  
+id_infra        int     %8.0g                 
+lat             float   %9.0g                 
+lon             float   %9.0g                 
+peri~1000m_2020 float   %9.0g                 
+peri~3000m_2020 float   %9.0g                 
+periu~500m_2020 float   %9.0g                 
+pop_~1000m_2020 float   %9.0g                 
+pop_~3000m_2020 float   %9.0g                 
+pop_d~500m_2020 float   %9.0g                 
+rura~1000m_2020 float   %9.0g                 
+rura~3000m_2020 float   %9.0g                 
+rural~500m_2020 float   %9.0g                 
+score_flou      float   %9.0g                 
+smod_code_2020  byte    %8.0g                 
+smod_mode_100~0 byte    %8.0g                 
+smod_mode_300~0 byte    %8.0g                 
+smod_mode_500~0 byte    %8.0g                 
+statut_admini~f str6    %9s                   
+statut_match    str5    %9s                   
+travel_time_min int     %8.0g                 
+urba~1000m_2020 float   %9.0g                 
+urba~3000m_2020 float   %9.0g                 
+urban~500m_2020 float   %9.0g                 
+urban_se~1000m_ float   %9.0g                 urban_semidens
+                                        > e_share_pct_1000m_
+                                        > 2020
+urban_se~3000m_ float   %9.0g                 urban_semidens
+                                        > e_share_pct_3000m_
+                                        > 2020
+urban_semiden~2 float   %9.0g                 urban_semidens
+                                        > e_share_pct_500m_2
+                                        > 020
+geo             str70   %70s                  .geo
+------------------------------------------------------------
+Sorted by: 
+     Note: Dataset has changed since last saved.
+
+. 
+. 
+. *=========================================================
+> ==============
+. * 5. NETTOYAGE DES NOMS D'ETABLISSEMENTS
+. *=========================================================
+> ==============
+. 
+. replace nometablissement = trim(itrim(nometablissement))
+(1 real change made)
+
+. 
+. 
+. *=========================================================
+> ==============
+. * 6. EXCLUSION DE L'ETABLISSEMENT CIBLE
+. *=========================================================
+> ==============
+. 
+. display ""
+
+
+. display ">>> Exclusion de CPEG PRODIGES DE DIEU"
+>>> Exclusion de CPEG PRODIGES DE DIEU
+
+. 
+. count if nometablissement == "CPEG PRODIGES DE DIEU"
+  0
+
+. 
+. display "Nombre d'observations trouvées : " r(N)
+Nombre d'observations trouvées : 0
+
+. 
+. drop if nometablissement == "CPEG PRODIGES DE DIEU"
+(0 observations deleted)
+
+. 
+. 
+. *=========================================================
+> ==============
+. * 7. NETTOYAGE DES VARIABLES GEOGRAPHIQUES
+. *=========================================================
+> ==============
+. 
+. foreach var in departement commune arrondissement quartier
+> village {
+  2. 
+.     replace `var' = trim(itrim(`var'))
+  3. }
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+
+. 
+. 
+. *=========================================================
+> ==============
+. * 8. CONSERVATION DES VARIABLES NECESSAIRES
+. *=========================================================
+> ==============
+. 
+. keep ///
+>     departement ///
+>     commune ///
+>     arrondissement ///
+>     quartiervillage ///
+>     nometablissement ///
+>     milieu ///
+>     giga_name ///
+>     degurba_etude_classe_2020 ///
+>     degurba_l1_officiel_2020
+
+. 
+. 
+. *=========================================================
+> ==============
+. * 9. TRI
+. *=========================================================
+> ==============
+. 
+. sort departement ///
+>      commune ///
+>      arrondissement ///
+>      quartiervillage ///
+>      nometablissement
+
+. 
+. 
+. *=========================================================
+> ==============
+. * 10. CONTROLES
+. *=========================================================
+> ==============
+. 
+. display ""
+
+
+. display "=================================================
+> ============="
+============================================================
+> ==
+
+. display "CONTROLES DE QUALITE"
+CONTROLES DE QUALITE
+
+. display "=================================================
+> ============="
+============================================================
+> ==
+
+. 
+. display ""
+
+
+. display "Nombre final d'écoles : " _N
+Nombre final d'écoles : 179
+
+. 
+. display ""
+
+
+. display "Variables finales :"
+Variables finales :
+
+. 
+. describe
+
+Contains data
+ Observations:           179                  
+    Variables:             9                  
+------------------------------------------------------------
+Variable      Storage   Display    Value
+    name         type    format    label      Variable label
+------------------------------------------------------------
+arrondissement  str15   %15s                  ARRONDISSEMENT
+commune         str13   %13s                  COMMUNE
+departement     str10   %10s                  DEPARTEMENT
+milieu          str6    %9s                   MILIEU
+nometablissem~t str38   %38s                  NOMETABLISSEME
+                                        > NT
+quartiervillage str21   %21s                  QUARTIERVILLAG
+                                        > E
+degurba_et~2020 str15   %15s                  
+degurba_l1~2020 str13   %13s                  
+giga_name       str37   %37s                  
+------------------------------------------------------------
+Sorted by: departement  commune  arrondissement  quartiervil
+> lage  nometablissement
+     Note: Dataset has changed since last saved.
+
+. 
+. 
+. display ""
+
+
+. display ">>> Doublons sur les établissements"
+>>> Doublons sur les établissements
+
+. 
+. duplicates report nometablissement
+
+Duplicates in terms of nometablissement
+
+--------------------------------------
+   Copies | Observations       Surplus
+----------+---------------------------
+        1 |          179             0
+--------------------------------------
+
+. 
+. 
+. display ""
+
+
+. display ">>> Valeurs manquantes"
+>>> Valeurs manquantes
+
+. 
+. misstable summarize
+(variables nonmissing or string)
+
+. 
+. 
+. display ""
+
+
+. display ">>> MILIEU"
+>>> MILIEU
+
+. 
+. tab milieu, missing
+
+     MILIEU |      Freq.     Percent        Cum.
+------------+-----------------------------------
+      Rural |        138       77.09       77.09
+     Urbain |         41       22.91      100.00
+------------+-----------------------------------
+      Total |        179      100.00
+
+. 
+. 
+. display ""
+
+
+. display ">>> GIGA NAME"
+>>> GIGA NAME
+
+. 
+. tab giga_name, missing
+
+                            giga_name |      Freq.     Perce
+> nt        Cum.
+--------------------------------------+---------------------
+> --------------
+                         CEG 1 ABOMEY |          2        1.
+> 12        1.12
+                  CEG 1 ABOMEY-CALAVI |          1        0.
+> 56        1.68
+                         CEG 1 ALLADA |          1        0.
+> 56        2.23
+                        CEG 1 BOHICON |          1        0.
+> 56        2.79
+                          CEG 1 BONOU |          1        0.
+> 56        3.35
+                           CEG 1 COVE |          1        0.
+> 56        3.91
+                         CEG 1 DJIDJA |          1        0.
+> 56        4.47
+                         CEG 1 OUESSE |          1        0.
+> 56        5.03
+                     CEG 1 ZOGBODOMEY |          1        0.
+> 56        5.59
+                         CEG 2 ABOMEY |          1        0.
+> 56        6.15
+                  CEG 2 ABOMEY-CALAVI |          1        0.
+> 56        6.70
+                         CEG 2 ALLADA |          1        0.
+> 56        7.26
+                        CEG 2 BOHICON |          1        0.
+> 56        7.82
+                           CEG 2 CANA |          2        1.
+> 12        8.94
+                           CEG 2 COVE |          1        0.
+> 56        9.50
+                         CEG 2 DJIDJA |          1        0.
+> 56       10.06
+                        CEG 2 GODOMEY |          1        0.
+> 56       10.61
+                     CEG 2 ZOGBODOMEY |          1        0.
+> 56       11.17
+                         CEG 3 ABOMEY |          1        0.
+> 56       11.73
+                  CEG 3 ABOMEY-CALAVI |          1        0.
+> 56       12.29
+                        CEG 3 BOHICON |          1        0.
+> 56       12.85
+                           CEG 3 COVE |          1        0.
+> 56       13.41
+                         CEG 3 OUIDAH |          1        0.
+> 56       13.97
+                        CEG 4 BOHICON |          1        0.
+> 56       14.53
+                        CEG 5 BOHICON |          1        0.
+> 56       15.08
+                        CEG 6 BOHICON |          1        0.
+> 56       15.64
+                           CEG 6 COVE |          1        0.
+> 56       16.20
+                         CEG ACADJAME |          2        1.
+> 12       17.32
+                    CEG ADANHONDJIGON |          1        0.
+> 56       17.88
+                       CEG ADINGINGON |          1        0.
+> 56       18.44
+                          CEG ADJAGBO |          1        0.
+> 56       18.99
+                        CEG ADJAHONME |          1        0.
+> 56       19.55
+                     CEG ADJRA-ADOVIE |          1        0.
+> 56       20.11
+                          CEG ADOUGOU |          1        0.
+> 56       20.67
+                       CEG AGANMALOME |          1        0.
+> 56       21.23
+                   CEG AGASSA-GODOMEY |          1        0.
+> 56       21.79
+                     CEG AGBANGNIZOUN |          1        0.
+> 56       22.35
+                          CEG AGBANTO |          2        1.
+> 12       23.46
+                          CEG AGBOKPA |          1        0.
+> 56       24.02
+                             CEG AGON |          1        0.
+> 56       24.58
+                          CEG AGONDJI |          1        0.
+> 56       25.14
+                        CEG AGONKANME |          1        0.
+> 56       25.70
+                  CEG AGONLIN-HOUEGBO |          1        0.
+> 56       26.26
+                           CEG AGOUNA |          1        0.
+> 56       26.82
+                     CEG AGUE KPOHOUE |          1        0.
+> 56       27.37
+                    CEG AHEME DEKANME |          1        0.
+> 56       27.93
+                     CEG AHOMEY-LOKPO |          1        0.
+> 56       28.49
+                    CEG AHOSSOU-GBETA |          1        0.
+> 56       29.05
+                    CEG AHOUANNONZOUN |          1        0.
+> 56       29.61
+                         CEG AIDOHOUE |          1        0.
+> 56       30.17
+                             CEG AIZE |          1        0.
+> 56       30.73
+                         CEG AKASSATO |          1        0.
+> 56       31.28
+                           CEG ALLAHE |          1        0.
+> 56       31.84
+                         CEG ASSANLIN |          1        0.
+> 56       32.40
+                       CEG ATCHAKANME |          1        0.
+> 56       32.96
+                     CEG ATROKPOCODJI |          1        0.
+> 56       33.52
+                          CEG ATTOGON |          1        0.
+> 56       34.08
+                           CEG AVLAME |          2        1.
+> 12       35.20
+                        CEG AVOGBANNA |          1        0.
+> 56       35.75
+                             CEG AYOU |          1        0.
+> 56       36.31
+                           CEG BANAME |          1        0.
+> 56       36.87
+                        CEG COCOTOMEY |          1        0.
+> 56       37.43
+                           CEG COUSSI |          1        0.
+> 56       37.99
+                          CEG D'ADJAN |          1        0.
+> 56       38.55
+                              CEG DAN |          1        0.
+> 56       39.11
+                            CEG DASSO |          1        0.
+> 56       39.66
+                           CEG DEDOME |          1        0.
+> 56       40.22
+                         CEG DEKANMEY |          1        0.
+> 56       40.78
+                            CEG DEKPO |          1        0.
+> 56       41.34
+                            CEG DILLY |          1        0.
+> 56       41.90
+                        CEG DJEGBADJI |          1        0.
+> 56       42.46
+                           CEG DJIGBE |          1        0.
+> 56       43.02
+                       CEG DODJI-SEHE |          1        0.
+> 56       43.58
+                             CEG DOME |          1        0.
+> 56       44.13
+                              CEG DON |          1        0.
+> 56       44.69
+                      CEG DOVI-DIZIGO |          1        0.
+> 56       45.25
+                        CEG DOVI-DOVE |          1        0.
+> 56       45.81
+                           CEG DOVOTA |          1        0.
+> 56       46.37
+                           CEG DRIDJI |          1        0.
+> 56       46.93
+                         CEG FONKPAME |          1        0.
+> 56       47.49
+                          CEG FOUMBEA |          1        0.
+> 56       48.04
+                           CEG GANVIE |          1        0.
+> 56       48.60
+                         CEG GBEDEGBE |          1        0.
+> 56       49.16
+                          CEG GBESSOU |          1        0.
+> 56       49.72
+                         CEG GBETAGBO |          1        0.
+> 56       50.28
+                            CEG GBETO |          1        0.
+> 56       50.84
+                       CEG GNIDJAZOUN |          1        0.
+> 56       51.40
+                          CEG GODOMEY |          1        0.
+> 56       51.96
+                             CEG GOHO |          1        0.
+> 56       52.51
+                      CEG GOLO-DJIGBE |          3        1.
+> 68       54.19
+                           CEG GOSSOE |          1        0.
+> 56       54.75
+                          CEG HEKANME |          1        0.
+> 56       55.31
+                            CEG HEVIE |          1        0.
+> 56       55.87
+                            CEG HINVI |          1        0.
+> 56       56.42
+                        CEG HLANHONOU |          1        0.
+> 56       56.98
+                     CEG HOUAKPE-DAHO |          1        0.
+> 56       57.54
+                           CEG HOUETO |          1        0.
+> 56       58.10
+                           CEG HOUMBO |          1        0.
+> 56       58.66
+                         CEG HOUNGOME |          1        0.
+> 56       59.22
+                            CEG HOUTO |          1        0.
+> 56       59.78
+                       CEG KANSOUNKPA |          1        0.
+> 56       60.34
+                            CEG KINTA |          1        0.
+> 56       60.89
+                       CEG KOUNDOKPOE |          1        0.
+> 56       61.45
+                       CEG KOUSSOUKPA |          1        0.
+> 56       62.01
+                         CEG KPAKPAME |          1        0.
+> 56       62.57
+                         CEG KPANROUN |          1        0.
+> 56       63.13
+                         CEG KPEDEKPO |          1        0.
+> 56       63.69
+                            CEG KPOBA |          1        0.
+> 56       64.25
+                         CEG KPOKISSA |          1        0.
+> 56       64.80
+                         CEG KPOMASSE |          1        0.
+> 56       65.36
+                         CEG KPOVIDJI |          1        0.
+> 56       65.92
+                          CEG KPOZOUN |          1        0.
+> 56       66.48
+                       CEG LA VERDURE |          1        0.
+> 56       67.04
+                            CEG LANTA |          1        0.
+> 56       67.60
+                      CEG LES TOHOUES |          1        0.
+> 56       68.16
+                     CEG LISSAZOUUNME |          1        0.
+> 56       68.72
+                      CEG LISSEGAZOUN |          1        0.
+> 56       69.27
+                      CEG LOBOZOUNKPA |          1        0.
+> 56       69.83
+                       CEG LON-AGONME |          1        0.
+> 56       70.39
+                            CEG MASSI |          1        0.
+> 56       70.95
+                         CEG MERIDIEN |          1        0.
+> 56       71.51
+                          CEG MOUGNON |          1        0.
+> 56       72.07
+                       CEG OUASSOUGON |          1        0.
+> 56       72.63
+                         CEG OUIDAH 2 |          1        0.
+> 56       73.18
+                           CEG OUINHI |          1        0.
+> 56       73.74
+                            CEG PAHOU |          1        0.
+> 56       74.30
+                         CEG PASSAGON |          1        0.
+> 56       74.86
+                          CEG PLATEAU |          1        0.
+> 56       75.42
+                            CEG SACLO |          1        0.
+> 56       75.98
+                            CEG SAGON |          1        0.
+> 56       76.54
+                             CEG SAHE |          1        0.
+> 56       77.09
+                       CEG SAVI-GAKPE |          1        0.
+> 56       77.65
+                      CEG SEDJE-DENOU |          1        0.
+> 56       78.21
+                  CEG SEDJE-HOUEGOUDO |          2        1.
+> 12       79.33
+                        CEG SEGBOHOUE |          1        0.
+> 56       79.89
+                           CEG SEHOUN |          2        1.
+> 12       81.01
+                            CEG SEKOU |          1        0.
+> 56       81.56
+                            CEG SETTO |          1        0.
+> 56       82.12
+                            CEG SINWE |          1        0.
+> 56       82.68
+                           CEG SO-AVA |          1        0.
+> 56       83.24
+                         CEG SODOHOME |          1        0.
+> 56       83.80
+                             CEG SOYO |          1        0.
+> 56       84.36
+                              CEG TAN |          1        0.
+> 56       84.92
+                    CEG TANGBO-DJEVIE |          1        0.
+> 56       85.47
+                           CEG TANKPE |          1        0.
+> 56       86.03
+                            CEG TANVE |          1        0.
+> 56       86.59
+                     CEG TANWE-HESSOU |          1        0.
+> 56       87.15
+                           CEG TINDJI |          1        0.
+> 56       87.71
+                            CEG TOFFO |          1        0.
+> 56       88.27
+                 CEG TOGOUDO D'ALLADA |          1        0.
+> 56       88.83
+                       CEG TOKPA-DOME |          1        0.
+> 56       89.39
+                     CEG TORI AGOUAKO |          1        0.
+> 56       89.94
+              CEG TORI-BOSSITO CENTRE |          1        0.
+> 56       90.50
+                        CEG TORI-CADA |          1        0.
+> 56       91.06
+               CEG UNION AZOHOUE-CADA |          2        1.
+> 12       92.18
+                        CEG UNION-AVA |          1        0.
+> 56       92.74
+                            CEG VEKKY |          1        0.
+> 56       93.30
+                          CEG VESSAME |          1        0.
+> 56       93.85
+                         CEG ZA-KPOTA |          1        0.
+> 56       94.41
+                         CEG ZA-TANTA |          1        0.
+> 56       94.97
+                        CEG ZAGNANADO |          1        0.
+> 56       95.53
+                            CEG ZALLI |          1        0.
+> 56       96.09
+                               CEG ZE |          1        0.
+> 56       96.65
+                           CEG ZINVIE |          1        0.
+> 56       97.21
+                           CEG ZOUKOU |          1        0.
+> 56       97.77
+           LYCEE DES JEUNES FILLES MC |          2        1.
+> 12       98.88
+LYCEE HOUEGBADJA (EX MAFORY BANGOURA) |          1        0.
+> 56       99.44
+               LYCEE HOUFFON D'ABOMEY |          1        0.
+> 56      100.00
+--------------------------------------+---------------------
+> --------------
+                                Total |        179      100.
+> 00
+
+. 
+. 
+. display ""
+
+
+. display ">>> DEGURBA ETUDE"
+>>> DEGURBA ETUDE
+
+. 
+. tab degurba_etude_classe_2020, missing
+
+degurba_etude_c |
+     lasse_2020 |      Freq.     Percent        Cum.
+----------------+-----------------------------------
+      PERIURBAN |         26       14.53       14.53
+          RURAL |         78       43.58       58.10
+     URBAN_CORE |         65       36.31       94.41
+URBAN_SEMIDENSE |         10        5.59      100.00
+----------------+-----------------------------------
+          Total |        179      100.00
+
+. 
+. 
+. display ""
+
+
+. display ">>> DEGURBA L1 OFFICIEL"
+>>> DEGURBA L1 OFFICIEL
+
+. 
+. tab degurba_l1_officiel_2020, missing
+
+degurba_l1_of |
+  ficiel_2020 |      Freq.     Percent        Cum.
+--------------+-----------------------------------
+        Rural |         78       43.58       43.58
+ Urban Centre |         48       26.82       70.39
+Urban Cluster |         53       29.61      100.00
+--------------+-----------------------------------
+        Total |        179      100.00
+
+. 
+. 
+. *=========================================================
+> ==============
+. * 11. SAUVEGARDE STATA
+. *=========================================================
+> ==============
+. 
+. save "$output_dta", replace
+(file C:\RONALDO\CKDEV\GENDER
+    NORMS\Randomization\classification_nettoyee.dta not
+    found)
+file C:\RONALDO\CKDEV\GENDER
+    NORMS\Randomization\classification_nettoyee.dta saved
+
+. 
+. 
+. *=========================================================
+> ==============
+. * 12. EXPORTATION EXCEL
+. *=========================================================
+> ==============
+. 
+. export excel using "$output_xlsx", ///
+>     firstrow(variables) ///
+>     replace
+file C:\RONALDO\CKDEV\GENDER NORMS\Randomization\classificat
+> ion_nettoyee.xlsx saved
+
+. 
+. 
+. *=========================================================
+> ==============
+. * 13. RESUME FINAL
+. *=========================================================
+> ==============
+. 
+. display ""
+
+
+. display "=================================================
+> ============="
+============================================================
+> ==
+
+. display "TRAITEMENT TERMINE AVEC SUCCES"
+TRAITEMENT TERMINE AVEC SUCCES
+
+. display "=================================================
+> ============="
+============================================================
+> ==
+
+. 
+. display "Nombre final d'écoles : " _N
+Nombre final d'écoles : 179
+
+. 
+. display ""
+
+
+. display "Fichier Stata : $output_dta"
+Fichier Stata : C:\RONALDO\CKDEV\GENDER NORMS\Randomization\
+> classification_nettoyee.dta
+
+. display "Fichier Excel : $output_xlsx"
+Fichier Excel : C:\RONALDO\CKDEV\GENDER NORMS\Randomization\
+> classification_nettoyee.xlsx
+
+. display "Log            : $logfile"
+Log            : C:\RONALDO\CKDEV\GENDER NORMS\Randomization
+> \classification.log
+
+. 
+. display "=================================================
+> ============="
+============================================================
+> ==
+
+. 
+. 
+. *=========================================================
+> ==============
+. * 14. FERMETURE
+. *=========================================================
+> ==============
+. 
+. log close _all
+      name:  <unnamed>
+       log:  C:\RONALDO\CKDEV\GENDER NORMS\Randomization\cla
+> ssification.log
+  log type:  text
+ closed on:   9 Aug 2026, 00:41:46
+------------------------------------------------------------
