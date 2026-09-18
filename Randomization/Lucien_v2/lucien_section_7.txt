@@ -1,0 +1,519 @@
+*======================================================================*
+* 7. RANDOMISATION DU PARENT CIBLE
+*
+* OBJECTIFS :
+*
+*   1. Randomisation imbriquee dans BLOC x BRAS ;
+*
+*   2. Control exclu ;
+*
+*   3. 50/50 Mother/Father dans chaque cellule bloc x bras
+*      autant que possible ;
+*
+*   4. Une cellule impaire produit un seul excedent ;
+*
+*   5. Les excedents sont regroupes SEPAREMENT par bras traite ;
+*
+*   6. Les excedents sont randomises a l'interieur de chaque bras ;
+*
+*   7. Les excedents sont ensuite alternes Mother/Father ;
+*
+*   8. Si le nombre total d'excedents est impair dans un bras,
+*      le dernier excedent est tire aleatoirement ;
+*
+*   9. Avec 52 ecoles par bras :
+*
+*          Salience                  = 26 Mother / 26 Father
+*          Salience + Implementation = 26 Mother / 26 Father
+*
+*======================================================================*
+
+
+*----------------------------------------------------------------------*
+* 7.1 ECOLES TRAITEES
+*----------------------------------------------------------------------*
+
+capture drop treated
+
+gen byte treated = ///
+    inlist(group3, 2, 3)
+
+label var treated ///
+    "1 = ecole traitee"
+
+
+*----------------------------------------------------------------------*
+* 7.2 INITIALISATION DE LA GRAINE PARENT
+*----------------------------------------------------------------------*
+
+sort id_infra
+
+set seed $SEED_PARENT
+
+
+*----------------------------------------------------------------------*
+* 7.3 PREMIER TIRAGE ALEATOIRE
+*
+* Une valeur aleatoire par ecole traitee.
+*----------------------------------------------------------------------*
+
+capture drop rand_parent
+
+gen double rand_parent = ///
+    runiform() ///
+    if treated == 1
+
+
+*----------------------------------------------------------------------*
+* 7.4 CREATION DE LA CELLULE BLOC x BRAS
+*----------------------------------------------------------------------*
+
+capture drop bloc_arm
+
+egen long bloc_arm = ///
+    group(bloc group3) ///
+    if treated == 1
+
+label var bloc_arm ///
+    "Cellule de randomisation : bloc x bras"
+
+
+*----------------------------------------------------------------------*
+* 7.5 RANDOMISATION DES ECOLES DANS CHAQUE CELLULE
+*----------------------------------------------------------------------*
+
+sort bloc_arm rand_parent
+
+
+capture drop rank_parent
+
+by bloc_arm: gen long rank_parent = ///
+    _n if treated == 1
+
+
+capture drop bloc_arm_n
+
+by bloc_arm: gen long bloc_arm_n = ///
+    _N if treated == 1
+
+
+*----------------------------------------------------------------------*
+* 7.6 ATTRIBUTION DE LA PARTIE PAIRE
+*
+* Exemple :
+*
+*   6 -> M F M F M F
+*   5 -> M F M F + excedent
+*   4 -> M F M F
+*   3 -> M F + excedent
+*----------------------------------------------------------------------*
+
+capture drop parent_group
+
+gen byte parent_group = .
+
+
+replace parent_group = ///
+    mod(rank_parent - 1, 2) + 1 ///
+    if treated == 1 ///
+    & rank_parent <= ///
+      floor(bloc_arm_n / 2) * 2
+
+
+*----------------------------------------------------------------------*
+* 7.7 IDENTIFICATION DES EXCEDENTS
+*----------------------------------------------------------------------*
+
+capture drop is_leftover
+
+gen byte is_leftover = ///
+    treated == 1 ///
+    & mod(bloc_arm_n, 2) == 1 ///
+    & rank_parent == bloc_arm_n
+
+label var is_leftover ///
+    "1 = excedent d'une cellule bloc x bras impaire"
+
+
+*----------------------------------------------------------------------*
+* 7.8 NOMBRE D'EXCEDENTS PAR BRAS
+*----------------------------------------------------------------------*
+
+capture drop n_leftover_arm
+
+bysort group3: egen long n_leftover_arm = ///
+    total(is_leftover)
+
+
+*----------------------------------------------------------------------*
+* 7.9 DEUXIEME TIRAGE ALEATOIRE
+*
+* IMPORTANT :
+* On NE fait PAS "set seed" ici.
+*
+* On continue exactement le flux aleatoire commence par rand_parent.
+*----------------------------------------------------------------------*
+
+capture drop rand_leftover
+
+gen double rand_leftover = ///
+    runiform() ///
+    if is_leftover == 1
+
+
+*----------------------------------------------------------------------*
+* 7.10 RANG DES EXCEDENTS
+*
+* IMPORTANT :
+* sum(is_leftover) permet de compter uniquement les excedents.
+*----------------------------------------------------------------------*
+
+sort group3 rand_leftover
+
+
+capture drop rank_leftover
+
+by group3: gen long rank_leftover = ///
+    sum(is_leftover)
+
+replace rank_leftover = . ///
+    if is_leftover != 1
+
+
+*----------------------------------------------------------------------*
+* 7.11 ATTRIBUTION ALTERNÉE DES EXCEDENTS
+*
+* 1 = Mother
+* 2 = Father
+* 3 = Mother
+* 4 = Father
+* etc.
+*----------------------------------------------------------------------*
+
+replace parent_group = ///
+    mod(rank_leftover - 1, 2) + 1 ///
+    if is_leftover == 1 ///
+    & rank_leftover <= ///
+      floor(n_leftover_arm / 2) * 2
+
+
+*----------------------------------------------------------------------*
+* 7.12 TROISIEME TIRAGE ALEATOIRE
+*
+* Seulement si le nombre d'excedents d'un bras est impair.
+*
+* IMPORTANT :
+* Toujours sans reset de la seed.
+*----------------------------------------------------------------------*
+
+capture drop rand_last_leftover
+
+gen double rand_last_leftover = ///
+    runiform() ///
+    if is_leftover == 1 ///
+    & mod(n_leftover_arm, 2) == 1 ///
+    & rank_leftover == n_leftover_arm
+
+
+*----------------------------------------------------------------------*
+* 7.13 ATTRIBUTION DU DERNIER EXCEDENT
+*----------------------------------------------------------------------*
+
+replace parent_group = ///
+    cond(rand_last_leftover < 0.5, 1, 2) ///
+    if is_leftover == 1 ///
+    & mod(n_leftover_arm, 2) == 1 ///
+    & rank_leftover == n_leftover_arm
+
+
+*----------------------------------------------------------------------*
+* 7.14 LABELS
+*----------------------------------------------------------------------*
+
+capture label drop parent_lbl
+
+label define parent_lbl ///
+    1 "Mother" ///
+    2 "Father", ///
+    replace
+
+label values parent_group parent_lbl
+
+label var parent_group ///
+    "Targeted parent: Mother/Father"
+
+
+*======================================================================*
+* 7.15 VERIFICATION CELLULE BLOC x BRAS
+*======================================================================*
+
+di as result ""
+di as result "======================================================="
+di as result "PARENT ASSIGNMENT BY BLOCK x TREATMENT ARM"
+di as result "======================================================="
+
+tab bloc_arm parent_group ///
+    if treated == 1, ///
+    missing
+
+
+*======================================================================*
+* 7.16 VERIFICATION GLOBALE
+*======================================================================*
+
+di as result ""
+di as result "======================================================="
+di as result "PARENT ASSIGNMENT BY TREATMENT ARM"
+di as result "======================================================="
+
+tab group3 parent_group ///
+    if treated == 1, ///
+    missing
+
+
+*======================================================================*
+* 7.17 EXTRACTION DES EFFECTIFS
+*======================================================================*
+
+quietly count ///
+    if group3 == 2 ///
+    & parent_group == 1
+
+local mother_salience = r(N)
+
+
+quietly count ///
+    if group3 == 2 ///
+    & parent_group == 2
+
+local father_salience = r(N)
+
+
+quietly count ///
+    if group3 == 3 ///
+    & parent_group == 1
+
+local mother_impl = r(N)
+
+
+quietly count ///
+    if group3 == 3 ///
+    & parent_group == 2
+
+local father_impl = r(N)
+
+
+*======================================================================*
+* 7.18 EFFECTIFS DES BRAS
+*======================================================================*
+
+quietly count if group3 == 1
+local n_control = r(N)
+
+quietly count if group3 == 2
+local n_salience = r(N)
+
+quietly count if group3 == 3
+local n_impl = r(N)
+
+
+di as result ""
+di as result "======================================================="
+di as result "EFFECTIFS DES BRAS"
+di as result "======================================================="
+
+di as result "Control                   : `n_control'"
+di as result "Salience                  : `n_salience'"
+di as result "Salience + Implementation : `n_impl'"
+
+
+*----------------------------------------------------------------------*
+* VERIFICATION ATTENDUE
+*----------------------------------------------------------------------*
+
+assert `n_salience' == 52
+assert `n_impl' == 52
+
+
+*======================================================================*
+* 7.19 RESULTATS MOTHER / FATHER
+*======================================================================*
+
+di as result ""
+di as result "======================================================="
+di as result "RESULTATS PARENT"
+di as result "======================================================="
+
+di as result ""
+di as result "Salience :"
+di as result "  Mother = `mother_salience'"
+di as result "  Father = `father_salience'"
+
+di as result ""
+di as result "Salience + Implementation :"
+di as result "  Mother = `mother_impl'"
+di as result "  Father = `father_impl'"
+
+
+*----------------------------------------------------------------------*
+* VERIFICATION DES TOTAUX
+*----------------------------------------------------------------------*
+
+assert ///
+    `mother_salience' + `father_salience' == 52
+
+assert ///
+    `mother_impl' + `father_impl' == 52
+
+
+*----------------------------------------------------------------------*
+* ECART MOTHER / FATHER
+*----------------------------------------------------------------------*
+
+local diff_sal = ///
+    abs(`mother_salience' - `father_salience')
+
+local diff_impl = ///
+    abs(`mother_impl' - `father_impl')
+
+
+di as result ""
+di as result "Difference Salience                  : `diff_sal'"
+di as result "Difference Salience + Implementation : `diff_impl'"
+
+
+*----------------------------------------------------------------------*
+* EQUILIBRE MAXIMAL
+*----------------------------------------------------------------------*
+
+assert `diff_sal' <= 1
+assert `diff_impl' <= 1
+
+
+*======================================================================*
+* 7.20 CONTROLE EXACT 26 / 26
+*======================================================================*
+*
+* Puisque chaque bras traite comporte 52 ecoles, le meilleur equilibre
+* possible est exactement :
+*
+*       26 Mother
+*       26 Father
+*
+*----------------------------------------------------------------------*
+
+assert `mother_salience' == 26
+assert `father_salience' == 26
+
+assert `mother_impl' == 26
+assert `father_impl' == 26
+
+
+di as result ""
+di as result "======================================================="
+di as result "FINAL PARENT BALANCE"
+di as result "======================================================="
+
+di as result ///
+    "Salience                  : 26 Mother / 26 Father"
+
+di as result ///
+    "Salience + Implementation : 26 Mother / 26 Father"
+
+di as result "======================================================="
+
+
+*======================================================================*
+* 7.21 CONTROLES DE COHERENCE INTERNES
+*======================================================================*
+
+*----------------------------------------------------------------------*
+* Toutes les ecoles traitees doivent avoir un parent.
+*----------------------------------------------------------------------*
+
+quietly count if treated == 1 & missing(parent_group)
+
+assert r(N) == 0
+
+
+*----------------------------------------------------------------------*
+* Aucune ecole Control ne doit avoir de parent.
+*----------------------------------------------------------------------*
+
+quietly count if treated == 0 & !missing(parent_group)
+
+assert r(N) == 0
+
+
+*----------------------------------------------------------------------*
+* Toutes les cellules bloc x bras traitees doivent avoir une
+* attribution parent.
+*----------------------------------------------------------------------*
+
+quietly count if treated == 1 & missing(bloc_arm)
+
+assert r(N) == 0
+
+
+*----------------------------------------------------------------------*
+* Toutes les cellules paires sont exactement 50/50.
+*----------------------------------------------------------------------*
+
+preserve
+
+    contract bloc_arm parent_group ///
+        if treated == 1, ///
+        freq(n)
+
+    bysort bloc_arm: egen cell_min = min(n)
+    bysort bloc_arm: egen cell_max = max(n)
+
+    quietly count if cell_min != cell_max
+
+    local unequal_even = r(N)
+
+restore
+
+
+di as result ""
+di as result ///
+    "Controle des cellules bloc x bras termine."
+
+
+*======================================================================*
+* 7.22 RESUME FINAL
+*======================================================================*
+
+di as result ""
+di as result "======================================================="
+di as result "RESUME RANDOMISATION PARENT"
+di as result "======================================================="
+
+di as result "Seed parent : $SEED_PARENT"
+
+di as result "Control : `n_control'"
+
+di as result ///
+    "Salience : `n_salience'"
+
+di as result ///
+    "Salience + Implementation : `n_impl'"
+
+di as result ""
+
+di as result ///
+    "Salience -> Mother = `mother_salience' ; Father = `father_salience'"
+
+di as result ///
+    "Implementation -> Mother = `mother_impl' ; Father = `father_impl'"
+
+di as result ""
+
+di as result "Balance parent : OK"
+
+di as result "======================================================="
+
+
+*======================================================================*
+* FIN SECTION 7
+*======================================================================*

@@ -1,0 +1,2409 @@
+{smcl}
+{txt}{sf}{ul off}{.-}
+      name:  {res}<unnamed>
+       {txt}log:  {res}C:\RONALDO\CKDEV\GENDER NORMS\Randomization\Lucien_v2\Outputs/randomization_v2_log_2026-08-31_17-12-49.smcl
+  {txt}log type:  {res}smcl
+ {txt}opened on:  {res}31 Aug 2026, 17:12:49
+{txt}
+{com}. 
+. 
+. *======================================================================*
+. * 1. IMPORT DE LA BASE ELIGIBLE
+. *======================================================================*
+. 
+. use ///
+>     "$working\school_list_gender_norm_v4.dta", ///
+>     clear
+{txt}
+{com}. 
+. *----------------------------------------------------------------------*
+. * VERIFICATION IDENTIFIANT
+. *----------------------------------------------------------------------*
+. 
+. isid ecole_key
+{txt}
+{com}. 
+. quietly count
+{txt}
+{com}. local n_total = r(N)
+{txt}
+{com}. 
+. di as result ""
+{res}
+{txt}
+{com}. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. di as result "BASE ELIGIBLE"
+{res}BASE ELIGIBLE
+{txt}
+{com}. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. di as result "Nombre d'ecoles : `n_total'"
+{res}Nombre d'ecoles : 156
+{txt}
+{com}. di as result "Nombre attendu   : 156"
+{res}Nombre attendu   : 156
+{txt}
+{com}. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. 
+. assert `n_total' == 156
+{txt}
+{com}. 
+. *----------------------------------------------------------------------*
+. * CREATION id_infra SI ABSENT
+. *----------------------------------------------------------------------*
+. 
+. capture confirm variable id_infra
+{txt}
+{com}. 
+. if _rc {c -(}
+.     gen long id_infra = _n
+.     label var id_infra ///
+>         "Identifiant unique ecole (genere)"
+. {c )-}
+{txt}
+{com}. 
+. isid id_infra
+{txt}
+{com}. 
+. 
+. *======================================================================*
+. * 2. VARIABLE DE TAILLE
+. *
+. * Taille = filles 6eme + filles 5eme
+. * Classification par mediane communale
+. *======================================================================*
+. 
+. capture drop target_enrol
+{txt}
+{com}. 
+. gen long target_enrol = ///
+>     NBF6EME + NBF5EME
+{txt}
+{com}. 
+. label var target_enrol ///
+>     "Effectif filles 6e+5e"
+{txt}
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * MEDIANE COMMUNALE
+. *----------------------------------------------------------------------*
+. 
+. capture drop med_enrol
+{txt}
+{com}. 
+. bysort COMMUNE: egen double med_enrol = ///
+>     median(target_enrol)
+{txt}
+{com}. 
+. label var med_enrol ///
+>     "Mediane communale de target_enrol"
+{txt}
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * CLASSIFICATION SMALL / LARGE
+. *----------------------------------------------------------------------*
+. 
+. capture drop size_label
+{txt}
+{com}. 
+. gen str5 size_label = ""
+{txt}(156 missing values generated)
+
+{com}. 
+. replace size_label = "Small" ///
+>     if target_enrol <= med_enrol
+{txt}(82 real changes made)
+
+{com}. 
+. replace size_label = "Large" ///
+>     if target_enrol > med_enrol
+{txt}(74 real changes made)
+
+{com}. 
+. 
+. quietly count if size_label == ""
+{txt}
+{com}. 
+. assert r(N) == 0
+{txt}
+{com}. 
+. 
+. di as result ""
+{res}
+{txt}
+{com}. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. di as result "CLASSIFICATION SMALL / LARGE"
+{res}CLASSIFICATION SMALL / LARGE
+{txt}
+{com}. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. 
+. tab COMMUNE size_label, missing
+
+                {txt}{c |}      size_label
+        COMMUNE {c |}     Large      Small {c |}     Total
+{hline 16}{c +}{hline 22}{c +}{hline 10}
+         ABOMEY {c |}{res}         3          3 {txt}{c |}{res}         6 
+{txt}  ABOMEY-CALAVI {c |}{res}         9         10 {txt}{c |}{res}        19 
+{txt}   AGBANGNIZOUN {c |}{res}         4          4 {txt}{c |}{res}         8 
+{txt}         ALLADA {c |}{res}         6          8 {txt}{c |}{res}        14 
+{txt}        BOHICON {c |}{res}         5          5 {txt}{c |}{res}        10 
+{txt}           COVE {c |}{res}         2          3 {txt}{c |}{res}         5 
+{txt}         DJIDJA {c |}{res}         4          5 {txt}{c |}{res}         9 
+{txt}       KPOMASSE {c |}{res}         5          5 {txt}{c |}{res}        10 
+{txt}         OUIDAH {c |}{res}         4          5 {txt}{c |}{res}         9 
+{txt}         OUINHI {c |}{res}         3          3 {txt}{c |}{res}         6 
+{txt}         SO-AVA {c |}{res}         2          3 {txt}{c |}{res}         5 
+{txt}          TOFFO {c |}{res}         4          5 {txt}{c |}{res}         9 
+{txt}   TORI-BOSSITO {c |}{res}         4          4 {txt}{c |}{res}         8 
+{txt}       ZA-KPOTA {c |}{res}         4          4 {txt}{c |}{res}         8 
+{txt}      ZAGNANADO {c |}{res}         4          4 {txt}{c |}{res}         8 
+{txt}             ZE {c |}{res}         5          5 {txt}{c |}{res}        10 
+{txt}     ZOGBODOMEY {c |}{res}         6          6 {txt}{c |}{res}        12 
+{txt}{hline 16}{c +}{hline 22}{c +}{hline 10}
+          Total {c |}{res}        74         82 {txt}{c |}{res}       156 
+{txt}
+{com}. 
+. 
+. *======================================================================*
+. * 3. STRATES = COMMUNE x SIZE
+. *
+. * AUCUNE fusion cross-commune
+. *======================================================================*
+. 
+. capture drop strate_label
+{txt}
+{com}. 
+. gen str40 strate_label = ///
+>     COMMUNE + "_" + size_label
+{txt}
+{com}. 
+. label var strate_label ///
+>     "Strate independante : commune x taille"
+{txt}
+{com}. 
+. 
+. capture drop strate_id
+{txt}
+{com}. 
+. egen long strate_id = ///
+>     group(strate_label)
+{txt}
+{com}. 
+. label var strate_id ///
+>     "Identifiant numerique de strate"
+{txt}
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * TAILLE DES STRATES
+. *----------------------------------------------------------------------*
+. 
+. capture drop strate_n
+{txt}
+{com}. 
+. bysort strate_id: gen long strate_n = _N
+{txt}
+{com}. 
+. label var strate_n ///
+>     "Nombre d'ecoles dans la strate"
+{txt}
+{com}. 
+. 
+. di as result ""
+{res}
+{txt}
+{com}. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. di as result "COMPOSITION DES STRATES"
+{res}COMPOSITION DES STRATES
+{txt}
+{com}. di as result "Commune x Size - AUCUNE FUSION"
+{res}Commune x Size - AUCUNE FUSION
+{txt}
+{com}. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. 
+. preserve
+{txt}
+{com}. 
+.     contract ///
+>         strate_id ///
+>         strate_label ///
+>         strate_n
+{txt}
+{com}. 
+.     gsort -strate_n
+{txt}
+{com}. 
+.     list ///
+>         strate_label ///
+>         strate_n, ///
+>         noobs ///
+>         sep(0)
+{txt}
+  {c TLC}{hline 21}{c -}{hline 10}{c TRC}
+  {c |} {res}       strate_label   strate_n {txt}{c |}
+  {c LT}{hline 21}{c -}{hline 10}{c RT}
+  {c |} {res}ABOMEY-CALAVI_Small         10 {txt}{c |}
+  {c |} {res}ABOMEY-CALAVI_Large          9 {txt}{c |}
+  {c |} {res}       ALLADA_Small          8 {txt}{c |}
+  {c |} {res}       ALLADA_Large          6 {txt}{c |}
+  {c |} {res}   ZOGBODOMEY_Small          6 {txt}{c |}
+  {c |} {res}   ZOGBODOMEY_Large          6 {txt}{c |}
+  {c |} {res}           ZE_Small          5 {txt}{c |}
+  {c |} {res}      BOHICON_Large          5 {txt}{c |}
+  {c |} {res}        TOFFO_Small          5 {txt}{c |}
+  {c |} {res}       DJIDJA_Small          5 {txt}{c |}
+  {c |} {res}           ZE_Large          5 {txt}{c |}
+  {c |} {res}       OUIDAH_Small          5 {txt}{c |}
+  {c |} {res}      BOHICON_Small          5 {txt}{c |}
+  {c |} {res}     KPOMASSE_Small          5 {txt}{c |}
+  {c |} {res}     KPOMASSE_Large          5 {txt}{c |}
+  {c |} {res}    ZAGNANADO_Small          4 {txt}{c |}
+  {c |} {res} AGBANGNIZOUN_Small          4 {txt}{c |}
+  {c |} {res} AGBANGNIZOUN_Large          4 {txt}{c |}
+  {c |} {res} TORI-BOSSITO_Small          4 {txt}{c |}
+  {c |} {res}     ZA-KPOTA_Small          4 {txt}{c |}
+  {c |} {res} TORI-BOSSITO_Large          4 {txt}{c |}
+  {c |} {res}        TOFFO_Large          4 {txt}{c |}
+  {c |} {res}    ZAGNANADO_Large          4 {txt}{c |}
+  {c |} {res}       OUIDAH_Large          4 {txt}{c |}
+  {c |} {res}       DJIDJA_Large          4 {txt}{c |}
+  {c |} {res}     ZA-KPOTA_Large          4 {txt}{c |}
+  {c |} {res}       ABOMEY_Small          3 {txt}{c |}
+  {c |} {res}       OUINHI_Small          3 {txt}{c |}
+  {c |} {res}       OUINHI_Large          3 {txt}{c |}
+  {c |} {res}       SO-AVA_Small          3 {txt}{c |}
+  {c |} {res}         COVE_Small          3 {txt}{c |}
+  {c |} {res}       ABOMEY_Large          3 {txt}{c |}
+  {c |} {res}         COVE_Large          2 {txt}{c |}
+  {c |} {res}       SO-AVA_Large          2 {txt}{c |}
+  {c BLC}{hline 21}{c -}{hline 10}{c BRC}
+
+{com}. 
+.     quietly count if strate_n < 6
+{txt}
+{com}. 
+.     di as result ""
+{res}
+{txt}
+{com}.     di as result ///
+>         "`r(N)' strates ont moins de 6 ecoles."
+{res}28 strates ont moins de 6 ecoles.
+{txt}
+{com}. 
+. restore
+{txt}
+{com}. 
+. 
+. *======================================================================*
+. * 4. CONSTRUCTION DES BLOCS
+. *
+. * Regle :
+. *   - blocs de 6 autant que possible ;
+. *   - dernier bloc = reste ;
+. *   - aucune fusion ;
+. *   - aucune fusion cross-commune.
+. *======================================================================*
+. 
+. sort id_infra
+{txt}
+{com}. 
+. set seed $SEED_BLOCKS
+{txt}
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * TIRAGE ALEATOIRE POUR LA CONSTRUCTION DES BLOCS
+. *----------------------------------------------------------------------*
+. 
+. capture drop rand_block
+{txt}
+{com}. 
+. gen double rand_block = ///
+>     runiform()
+{txt}
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * RANG DANS LA STRATE
+. *----------------------------------------------------------------------*
+. 
+. sort strate_id rand_block
+{txt}
+{com}. 
+. capture drop rank_in_strate
+{txt}
+{com}. 
+. by strate_id: gen long rank_in_strate = _n
+{txt}
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * NUMERO DU BLOC DANS LA STRATE
+. *
+. * 1-6   = bloc 1
+. * 7-12  = bloc 2
+. * etc.
+. *----------------------------------------------------------------------*
+. 
+. capture drop block_in_strate
+{txt}
+{com}. 
+. gen long block_in_strate = ///
+>     ceil(rank_in_strate / 6)
+{txt}
+{com}. 
+. label var block_in_strate ///
+>     "Numero du bloc dans la strate"
+{txt}
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * IDENTIFIANT GLOBAL DU BLOC
+. *----------------------------------------------------------------------*
+. 
+. capture drop bloc
+{txt}
+{com}. 
+. egen long bloc = ///
+>     group(strate_id block_in_strate)
+{txt}
+{com}. 
+. label var bloc ///
+>     "Identifiant final du bloc"
+{txt}
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * TAILLE DU BLOC
+. *----------------------------------------------------------------------*
+. 
+. capture drop bloc_n
+{txt}
+{com}. 
+. bysort bloc: gen long bloc_n = _N
+{txt}
+{com}. 
+. label var bloc_n ///
+>     "Nombre d'ecoles dans le bloc"
+{txt}
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * VERIFICATION BLOCS
+. *----------------------------------------------------------------------*
+. 
+. summarize bloc_n
+
+{txt}    Variable {c |}        Obs        Mean    Std. dev.       Min        Max
+{hline 13}{c +}{hline 57}
+{space 6}bloc_n {c |}{res}        156    4.538462     1.10357          2          6
+{txt}
+{com}. 
+. di as result ""
+{res}
+{txt}
+{com}. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. di as result "BLOCS FINAUX"
+{res}BLOCS FINAUX
+{txt}
+{com}. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. 
+. quietly levelsof bloc, local(blist)
+{txt}
+{com}. 
+. di as result ///
+>     "Nombre de blocs : `: word count `blist''"
+{res}Nombre de blocs : 37
+{txt}
+{com}. 
+. di as result ///
+>     "Taille minimale : `r(min)'"
+{res}Taille minimale : 
+{txt}
+{com}. 
+. di as result ///
+>     "Taille maximale : `r(max)'"
+{res}Taille maximale : 
+{txt}
+{com}. 
+. isid id_infra
+{txt}
+{com}. 
+. quietly count if missing(bloc)
+{txt}
+{com}. 
+. assert r(N) == 0
+{txt}
+{com}. 
+. 
+. *======================================================================*
+. * 5. SAUVEGARDE INTERMEDIAIRE
+. *======================================================================*
+. 
+. sort bloc id_infra
+{txt}
+{com}. 
+. save ///
+>     "$outputdir/ecoles_blocs_v2_locked.dta", ///
+>     replace
+{txt}{p 0 4 2}
+file {bf}
+C:\RONALDO\CKDEV\GENDER NORMS\Randomization\Lucien_v2\Outputs/ecoles_blocs_v2_locked.dta{rm}
+saved
+{p_end}
+
+{com}. 
+. 
+. *======================================================================*
+. * 6. RANDOMISATION DES 3 BRAS
+. *
+. * Randomisation A L'INTERIEUR DE CHAQUE BLOC
+. *======================================================================*
+. 
+. sort id_infra
+{txt}
+{com}. 
+. set seed $SEED_ARMS
+{txt}
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * TIRAGE ALEATOIRE
+. *----------------------------------------------------------------------*
+. 
+. capture drop rand_arm
+{txt}
+{com}. 
+. gen double rand_arm = ///
+>     runiform()
+{txt}
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * RANG DANS LE BLOC
+. *----------------------------------------------------------------------*
+. 
+. sort bloc rand_arm
+{txt}
+{com}. 
+. capture drop rank_arm
+{txt}
+{com}. 
+. by bloc: gen long rank_arm = _n
+{txt}
+{com}. 
+. 
+. capture drop bloc_n_arm
+{txt}
+{com}. 
+. by bloc: gen long bloc_n_arm = _N
+{txt}
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * VARIABLE BRAS
+. *
+. * 1 = Control
+. * 2 = Salience
+. * 3 = Salience + Implementation
+. *----------------------------------------------------------------------*
+. 
+. capture drop group3
+{txt}
+{com}. 
+. gen byte group3 = .
+{txt}(156 missing values generated)
+
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * ATTRIBUTION DE BASE
+. *
+. * Si bloc de 6 :
+. *   1 2 3 1 2 3
+. *
+. * Si bloc de 5 :
+. *   1 2 3 1 2
+. *
+. * Le reste sera randomise ensuite.
+. *----------------------------------------------------------------------*
+. 
+. replace group3 = ///
+>     mod(rank_arm - 1, $N_ARMS) + 1 ///
+>     if rank_arm <= ///
+>        floor(bloc_n_arm / $N_ARMS) * $N_ARMS
+{txt}(120 real changes made)
+
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * RANDOMISATION DU RESTE
+. *----------------------------------------------------------------------*
+. 
+. levelsof bloc, local(blist_arm) clean
+{res}{txt}1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37
+
+{com}. 
+. foreach b of local blist_arm {c -(}
+{txt}  2{com}. 
+.     quietly summarize bloc_n_arm ///
+>         if bloc == `b', ///
+>         meanonly
+{txt}  3{com}. 
+.     local n = r(max)
+{txt}  4{com}. 
+.     local nbase = ///
+>         floor(`n' / $N_ARMS)
+{txt}  5{com}. 
+.     local rem = ///
+>         `n' - `nbase' * $N_ARMS
+{txt}  6{com}. 
+. 
+.     if `rem' > 0 {c -(}
+{txt}  7{com}. 
+.         capture frame drop arm_draw
+{txt}  8{com}. 
+.         frame create arm_draw
+{txt}  9{com}. 
+. 
+.         frame arm_draw {c -(}
+{txt} 10{com}. 
+.             set obs $N_ARMS
+{txt} 11{com}. 
+.             gen byte arm_id = _n
+{txt} 12{com}. 
+.             gen double u = ///
+>                 runiform()
+{txt} 13{com}. 
+.             sort u
+{txt} 14{com}.         {c )-}
+{txt} 15{com}. 
+. 
+.         local chosen ""
+{txt} 16{com}. 
+.         forvalues i = 1/`rem' {c -(}
+{txt} 17{com}. 
+.             frame arm_draw: ///
+>                 local this_arm = arm_id[`i']
+{txt} 18{com}. 
+.             local chosen ///
+>                 "`chosen' `this_arm'"
+{txt} 19{com}.         {c )-}
+{txt} 20{com}. 
+. 
+.         frame drop arm_draw
+{txt} 21{com}. 
+. 
+.         local i = 1
+{txt} 22{com}. 
+.         foreach a of local chosen {c -(}
+{txt} 23{com}. 
+.             quietly replace group3 = `a' ///
+>                 if bloc == `b' ///
+>                 & rank_arm == ///
+>                   `nbase' * $N_ARMS + `i'
+{txt} 24{com}. 
+.             local i = `i' + 1
+{txt} 25{com}.         {c )-}
+{txt} 26{com}.     {c )-}
+{txt} 27{com}. {c )-}
+{txt}{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * VERIFICATION
+. *----------------------------------------------------------------------*
+. 
+. quietly count if missing(group3)
+{txt}
+{com}. 
+. assert r(N) == 0
+{txt}
+{com}. 
+. 
+. label define arm_lbl ///
+>     1 "Control" ///
+>     2 "Salience" ///
+>     3 "Salience + Implementation", ///
+>     replace
+{txt}
+{com}. 
+. label values group3 arm_lbl
+{txt}
+{com}. 
+. label var group3 ///
+>     "Randomized treatment arm"
+{txt}
+{com}. 
+. 
+. di as result ""
+{res}
+{txt}
+{com}. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. di as result "REPARTITION GLOBALE DES BRAS"
+{res}REPARTITION GLOBALE DES BRAS
+{txt}
+{com}. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. 
+. tab group3
+
+ {txt}Randomized treatment arm {c |}      Freq.     Percent        Cum.
+{hline 26}{c +}{hline 35}
+                  Control {c |}{res}         52       33.33       33.33
+{txt}                 Salience {c |}{res}         52       33.33       66.67
+{txt}Salience + Implementation {c |}{res}         52       33.33      100.00
+{txt}{hline 26}{c +}{hline 35}
+                    Total {c |}{res}        156      100.00
+{txt}
+{com}. 
+. 
+. di as result ""
+{res}
+{txt}
+{com}. di as result "REPARTITION PAR BLOC"
+{res}REPARTITION PAR BLOC
+{txt}
+{com}. 
+. tab bloc group3
+
+{txt}Identifian {c |}
+t final du {c |}     Randomized treatment arm
+      bloc {c |}   Control   Salience  Salience  {c |}     Total
+{hline 11}{c +}{hline 33}{c +}{hline 10}
+         1 {c |}{res}         2          2          2 {txt}{c |}{res}         6 
+{txt}         2 {c |}{res}         1          1          1 {txt}{c |}{res}         3 
+{txt}         3 {c |}{res}         2          2          2 {txt}{c |}{res}         6 
+{txt}         4 {c |}{res}         2          1          1 {txt}{c |}{res}         4 
+{txt}         5 {c |}{res}         1          1          1 {txt}{c |}{res}         3 
+{txt}         6 {c |}{res}         1          1          1 {txt}{c |}{res}         3 
+{txt}         7 {c |}{res}         2          1          1 {txt}{c |}{res}         4 
+{txt}         8 {c |}{res}         1          2          1 {txt}{c |}{res}         4 
+{txt}         9 {c |}{res}         2          2          2 {txt}{c |}{res}         6 
+{txt}        10 {c |}{res}         2          2          2 {txt}{c |}{res}         6 
+{txt}        11 {c |}{res}         1          1          0 {txt}{c |}{res}         2 
+{txt}        12 {c |}{res}         1          2          2 {txt}{c |}{res}         5 
+{txt}        13 {c |}{res}         2          1          2 {txt}{c |}{res}         5 
+{txt}        14 {c |}{res}         0          1          1 {txt}{c |}{res}         2 
+{txt}        15 {c |}{res}         1          1          1 {txt}{c |}{res}         3 
+{txt}        16 {c |}{res}         2          1          1 {txt}{c |}{res}         4 
+{txt}        17 {c |}{res}         1          2          2 {txt}{c |}{res}         5 
+{txt}        18 {c |}{res}         2          1          2 {txt}{c |}{res}         5 
+{txt}        19 {c |}{res}         2          2          1 {txt}{c |}{res}         5 
+{txt}        20 {c |}{res}         2          1          1 {txt}{c |}{res}         4 
+{txt}        21 {c |}{res}         1          2          2 {txt}{c |}{res}         5 
+{txt}        22 {c |}{res}         1          1          1 {txt}{c |}{res}         3 
+{txt}        23 {c |}{res}         1          1          1 {txt}{c |}{res}         3 
+{txt}        24 {c |}{res}         1          1          0 {txt}{c |}{res}         2 
+{txt}        25 {c |}{res}         1          1          1 {txt}{c |}{res}         3 
+{txt}        26 {c |}{res}         1          1          2 {txt}{c |}{res}         4 
+{txt}        27 {c |}{res}         2          1          2 {txt}{c |}{res}         5 
+{txt}        28 {c |}{res}         1          1          2 {txt}{c |}{res}         4 
+{txt}        29 {c |}{res}         1          2          1 {txt}{c |}{res}         4 
+{txt}        30 {c |}{res}         2          1          1 {txt}{c |}{res}         4 
+{txt}        31 {c |}{res}         1          1          2 {txt}{c |}{res}         4 
+{txt}        32 {c |}{res}         1          2          1 {txt}{c |}{res}         4 
+{txt}        33 {c |}{res}         1          2          1 {txt}{c |}{res}         4 
+{txt}        34 {c |}{res}         2          1          2 {txt}{c |}{res}         5 
+{txt}        35 {c |}{res}         1          2          2 {txt}{c |}{res}         5 
+{txt}        36 {c |}{res}         2          2          2 {txt}{c |}{res}         6 
+{txt}        37 {c |}{res}         2          2          2 {txt}{c |}{res}         6 
+{txt}{hline 11}{c +}{hline 33}{c +}{hline 10}
+     Total {c |}{res}        52         52         52 {txt}{c |}{res}       156 
+{txt}
+{com}. 
+. 
+. *======================================================================*
+. * 6.1 CONTROLE INFORMATIONNEL DES PETITS BLOCS
+. *======================================================================*
+. 
+. preserve
+{txt}
+{com}. 
+.     contract bloc group3, freq(narm)
+{txt}
+{com}. 
+.     bysort bloc: egen narm_min = ///
+>         min(narm)
+{txt}
+{com}. 
+.     quietly count if narm_min < 2
+{txt}
+{com}. 
+.     di as result ""
+{res}
+{txt}
+{com}.     di as result ///
+>         "`r(N)' cellules bloc x bras ont moins de 2 ecoles."
+{res}90 cellules bloc x bras ont moins de 2 ecoles.
+{txt}
+{com}. 
+.     di as result ///
+>         "Ceci est possible et attendu avec les petits blocs."
+{res}Ceci est possible et attendu avec les petits blocs.
+{txt}
+{com}. 
+. restore
+{txt}
+{com}. 
+. 
+. *======================================================================*
+. * 6.2 REPRODUCTIBILITE DE LA RANDOMISATION DES BRAS
+. *======================================================================*
+. 
+. preserve
+{txt}
+{com}. 
+.     sort id_infra
+{txt}
+{com}. 
+.     set seed $SEED_ARMS
+{txt}
+{com}. 
+. 
+.     gen double rand_arm_chk = ///
+>         runiform()
+{txt}
+{com}. 
+. 
+.     sort bloc rand_arm_chk
+{txt}
+{com}. 
+. 
+.     by bloc: gen long rank_chk = _n
+{txt}
+{com}. 
+.     by bloc: gen long bloc_n_chk = _N
+{txt}
+{com}. 
+. 
+.     gen byte group3_chk = .
+{txt}(156 missing values generated)
+
+{com}. 
+. 
+.     replace group3_chk = ///
+>         mod(rank_chk - 1, $N_ARMS) + 1 ///
+>         if rank_chk <= ///
+>            floor(bloc_n_chk / $N_ARMS) * $N_ARMS
+{txt}(120 real changes made)
+
+{com}. 
+. 
+.     levelsof bloc, local(blist_chk) clean
+{res}{txt}1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37
+
+{com}. 
+. 
+.     foreach b of local blist_chk {c -(}
+{txt}  2{com}. 
+.         quietly summarize bloc_n_chk ///
+>             if bloc == `b', ///
+>             meanonly
+{txt}  3{com}. 
+.         local n = r(max)
+{txt}  4{com}. 
+.         local nbase = ///
+>             floor(`n' / $N_ARMS)
+{txt}  5{com}. 
+.         local rem = ///
+>             `n' - `nbase' * $N_ARMS
+{txt}  6{com}. 
+. 
+.         if `rem' > 0 {c -(}
+{txt}  7{com}. 
+.             capture frame drop arm_draw_chk
+{txt}  8{com}. 
+.             frame create arm_draw_chk
+{txt}  9{com}. 
+. 
+.             frame arm_draw_chk {c -(}
+{txt} 10{com}. 
+.                 set obs $N_ARMS
+{txt} 11{com}. 
+.                 gen byte arm_id = _n
+{txt} 12{com}. 
+.                 gen double u = ///
+>                     runiform()
+{txt} 13{com}. 
+.                 sort u
+{txt} 14{com}.             {c )-}
+{txt} 15{com}. 
+. 
+.             local chosen_chk ""
+{txt} 16{com}. 
+.             forvalues i = 1/`rem' {c -(}
+{txt} 17{com}. 
+.                 frame arm_draw_chk: ///
+>                     local this_arm = arm_id[`i']
+{txt} 18{com}. 
+.                 local chosen_chk ///
+>                     "`chosen_chk' `this_arm'"
+{txt} 19{com}.             {c )-}
+{txt} 20{com}. 
+. 
+.             frame drop arm_draw_chk
+{txt} 21{com}. 
+. 
+.             local i = 1
+{txt} 22{com}. 
+.             foreach a of local chosen_chk {c -(}
+{txt} 23{com}. 
+.                 quietly replace group3_chk = `a' ///
+>                     if bloc == `b' ///
+>                     & rank_chk == ///
+>                       `nbase' * $N_ARMS + `i'
+{txt} 24{com}. 
+.                 local i = `i' + 1
+{txt} 25{com}.             {c )-}
+{txt} 26{com}.         {c )-}
+{txt} 27{com}.     {c )-}
+{txt}{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+{p}
+Number of observations ({bf:_N}) was 0,
+now 3.
+{p_end}
+
+{com}. 
+. 
+.     assert group3 == group3_chk
+{txt}
+{com}. 
+.     di as result ""
+{res}
+{txt}
+{com}.     di as result ///
+>         "REPRODUCTIBILITE CONFIRMEE (BRAS)"
+{res}REPRODUCTIBILITE CONFIRMEE (BRAS)
+{txt}
+{com}. 
+. restore
+{txt}
+{com}. 
+. 
+. *======================================================================*
+. * 7. RANDOMISATION DU PARENT CIBLE
+. *
+. * OBJECTIFS :
+. *
+. *   1. Randomisation imbriquee dans BLOC x BRAS ;
+. *
+. *   2. Control exclu ;
+. *
+. *   3. 50/50 Mother/Father dans chaque cellule bloc x bras
+. *      autant que possible ;
+. *
+. *   4. Une cellule impaire produit un seul excedent ;
+. *
+. *   5. Les excedents sont regroupes SEPAREMENT par bras traite ;
+. *
+. *   6. Les excedents sont randomises a l'interieur de chaque bras ;
+. *
+. *   7. Les excedents sont ensuite alternes Mother/Father ;
+. *
+. *   8. Si le nombre total d'excedents est impair dans un bras,
+. *      le dernier excedent est tire aleatoirement ;
+. *
+. *   9. Avec 52 ecoles par bras :
+. *
+. *          Salience                  = 26 Mother / 26 Father
+. *          Salience + Implementation = 26 Mother / 26 Father
+. *
+. *======================================================================*
+. 
+. 
+. *----------------------------------------------------------------------*
+. * 7.1 ECOLES TRAITEES
+. *----------------------------------------------------------------------*
+. 
+. capture drop treated
+{txt}
+{com}. 
+. gen byte treated = ///
+>     inlist(group3, 2, 3)
+{txt}
+{com}. 
+. label var treated ///
+>     "1 = ecole traitee"
+{txt}
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * 7.2 INITIALISATION DE LA GRAINE PARENT
+. *----------------------------------------------------------------------*
+. 
+. sort id_infra
+{txt}
+{com}. 
+. set seed $SEED_PARENT
+{txt}
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * 7.3 PREMIER TIRAGE ALEATOIRE
+. *
+. * Une valeur aleatoire par ecole traitee.
+. *----------------------------------------------------------------------*
+. 
+. capture drop rand_parent
+{txt}
+{com}. 
+. gen double rand_parent = ///
+>     runiform() ///
+>     if treated == 1
+{txt}(52 missing values generated)
+
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * 7.4 CREATION DE LA CELLULE BLOC x BRAS
+. *----------------------------------------------------------------------*
+. 
+. capture drop bloc_arm
+{txt}
+{com}. 
+. egen long bloc_arm = ///
+>     group(bloc group3) ///
+>     if treated == 1
+{txt}(52 missing values generated)
+
+{com}. 
+. label var bloc_arm ///
+>     "Cellule de randomisation : bloc x bras"
+{txt}
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * 7.5 RANDOMISATION DES ECOLES DANS CHAQUE CELLULE
+. *----------------------------------------------------------------------*
+. 
+. sort bloc_arm rand_parent
+{txt}
+{com}. 
+. 
+. capture drop rank_parent
+{txt}
+{com}. 
+. by bloc_arm: gen long rank_parent = ///
+>     _n if treated == 1
+{txt}(52 missing values generated)
+
+{com}. 
+. 
+. capture drop bloc_arm_n
+{txt}
+{com}. 
+. by bloc_arm: gen long bloc_arm_n = ///
+>     _N if treated == 1
+{txt}(52 missing values generated)
+
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * 7.6 ATTRIBUTION DE LA PARTIE PAIRE
+. *
+. * Exemple :
+. *
+. *   6 -> M F M F M F
+. *   5 -> M F M F + excedent
+. *   4 -> M F M F
+. *   3 -> M F + excedent
+. *----------------------------------------------------------------------*
+. 
+. capture drop parent_group
+{txt}
+{com}. 
+. gen byte parent_group = .
+{txt}(156 missing values generated)
+
+{com}. 
+. 
+. replace parent_group = ///
+>     mod(rank_parent - 1, 2) + 1 ///
+>     if treated == 1 ///
+>     & rank_parent <= ///
+>       floor(bloc_arm_n / 2) * 2
+{txt}(64 real changes made)
+
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * 7.7 IDENTIFICATION DES EXCEDENTS
+. *----------------------------------------------------------------------*
+. 
+. capture drop is_leftover
+{txt}
+{com}. 
+. gen byte is_leftover = ///
+>     treated == 1 ///
+>     & mod(bloc_arm_n, 2) == 1 ///
+>     & rank_parent == bloc_arm_n
+{txt}
+{com}. 
+. label var is_leftover ///
+>     "1 = excedent d'une cellule bloc x bras impaire"
+{txt}
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * 7.8 NOMBRE D'EXCEDENTS PAR BRAS
+. *----------------------------------------------------------------------*
+. 
+. capture drop n_leftover_arm
+{txt}
+{com}. 
+. bysort group3: egen long n_leftover_arm = ///
+>     total(is_leftover)
+{txt}
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * 7.9 DEUXIEME TIRAGE ALEATOIRE
+. *
+. * IMPORTANT :
+. * On NE fait PAS "set seed" ici.
+. *
+. * On continue exactement le flux aleatoire commence par rand_parent.
+. *----------------------------------------------------------------------*
+. 
+. capture drop rand_leftover
+{txt}
+{com}. 
+. gen double rand_leftover = ///
+>     runiform() ///
+>     if is_leftover == 1
+{txt}(116 missing values generated)
+
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * 7.10 RANG DES EXCEDENTS
+. *
+. * IMPORTANT :
+. * sum(is_leftover) permet de compter uniquement les excedents.
+. *----------------------------------------------------------------------*
+. 
+. sort group3 rand_leftover
+{txt}
+{com}. 
+. 
+. capture drop rank_leftover
+{txt}
+{com}. 
+. by group3: gen long rank_leftover = ///
+>     sum(is_leftover)
+{txt}
+{com}. 
+. replace rank_leftover = . ///
+>     if is_leftover != 1
+{txt}(116 real changes made, 116 to missing)
+
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * 7.11 ATTRIBUTION ALTERNÉE DES EXCEDENTS
+. *
+. * 1 = Mother
+. * 2 = Father
+. * 3 = Mother
+. * 4 = Father
+. * etc.
+. *----------------------------------------------------------------------*
+. 
+. replace parent_group = ///
+>     mod(rank_leftover - 1, 2) + 1 ///
+>     if is_leftover == 1 ///
+>     & rank_leftover <= ///
+>       floor(n_leftover_arm / 2) * 2
+{txt}(40 real changes made)
+
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * 7.12 TROISIEME TIRAGE ALEATOIRE
+. *
+. * Seulement si le nombre d'excedents d'un bras est impair.
+. *
+. * IMPORTANT :
+. * Toujours sans reset de la seed.
+. *----------------------------------------------------------------------*
+. 
+. capture drop rand_last_leftover
+{txt}
+{com}. 
+. gen double rand_last_leftover = ///
+>     runiform() ///
+>     if is_leftover == 1 ///
+>     & mod(n_leftover_arm, 2) == 1 ///
+>     & rank_leftover == n_leftover_arm
+{txt}(156 missing values generated)
+
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * 7.13 ATTRIBUTION DU DERNIER EXCEDENT
+. *----------------------------------------------------------------------*
+. 
+. replace parent_group = ///
+>     cond(rand_last_leftover < 0.5, 1, 2) ///
+>     if is_leftover == 1 ///
+>     & mod(n_leftover_arm, 2) == 1 ///
+>     & rank_leftover == n_leftover_arm
+{txt}(0 real changes made)
+
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * 7.14 LABELS
+. *----------------------------------------------------------------------*
+. 
+. capture label drop parent_lbl
+{txt}
+{com}. 
+. label define parent_lbl ///
+>     1 "Mother" ///
+>     2 "Father", ///
+>     replace
+{txt}
+{com}. 
+. label values parent_group parent_lbl
+{txt}
+{com}. 
+. label var parent_group ///
+>     "Targeted parent: Mother/Father"
+{txt}
+{com}. 
+. 
+. *======================================================================*
+. * 7.15 VERIFICATION CELLULE BLOC x BRAS
+. *======================================================================*
+. 
+. di as result ""
+{res}
+{txt}
+{com}. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. di as result "PARENT ASSIGNMENT BY BLOCK x TREATMENT ARM"
+{res}PARENT ASSIGNMENT BY BLOCK x TREATMENT ARM
+{txt}
+{com}. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. 
+. tab bloc_arm parent_group ///
+>     if treated == 1, ///
+>     missing
+
+{txt}Cellule de {c |}
+randomisat {c |}   Targeted parent:
+ion : bloc {c |}     Mother/Father
+    x bras {c |}    Mother     Father {c |}     Total
+{hline 11}{c +}{hline 22}{c +}{hline 10}
+         1 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}         2 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}         3 {c |}{res}         0          1 {txt}{c |}{res}         1 
+{txt}         4 {c |}{res}         0          1 {txt}{c |}{res}         1 
+{txt}         5 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}         6 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}         7 {c |}{res}         1          0 {txt}{c |}{res}         1 
+{txt}         8 {c |}{res}         1          0 {txt}{c |}{res}         1 
+{txt}         9 {c |}{res}         0          1 {txt}{c |}{res}         1 
+{txt}        10 {c |}{res}         1          0 {txt}{c |}{res}         1 
+{txt}        11 {c |}{res}         1          0 {txt}{c |}{res}         1 
+{txt}        12 {c |}{res}         0          1 {txt}{c |}{res}         1 
+{txt}        13 {c |}{res}         0          1 {txt}{c |}{res}         1 
+{txt}        14 {c |}{res}         0          1 {txt}{c |}{res}         1 
+{txt}        15 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}        16 {c |}{res}         1          0 {txt}{c |}{res}         1 
+{txt}        17 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}        18 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}        19 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}        20 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}        21 {c |}{res}         1          0 {txt}{c |}{res}         1 
+{txt}        22 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}        23 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}        24 {c |}{res}         1          0 {txt}{c |}{res}         1 
+{txt}        25 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}        26 {c |}{res}         1          0 {txt}{c |}{res}         1 
+{txt}        27 {c |}{res}         0          1 {txt}{c |}{res}         1 
+{txt}        28 {c |}{res}         1          0 {txt}{c |}{res}         1 
+{txt}        29 {c |}{res}         1          0 {txt}{c |}{res}         1 
+{txt}        30 {c |}{res}         1          0 {txt}{c |}{res}         1 
+{txt}        31 {c |}{res}         0          1 {txt}{c |}{res}         1 
+{txt}        32 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}        33 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}        34 {c |}{res}         1          0 {txt}{c |}{res}         1 
+{txt}        35 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}        36 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}        37 {c |}{res}         1          0 {txt}{c |}{res}         1 
+{txt}        38 {c |}{res}         1          0 {txt}{c |}{res}         1 
+{txt}        39 {c |}{res}         1          0 {txt}{c |}{res}         1 
+{txt}        40 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}        41 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}        42 {c |}{res}         0          1 {txt}{c |}{res}         1 
+{txt}        43 {c |}{res}         1          0 {txt}{c |}{res}         1 
+{txt}        44 {c |}{res}         0          1 {txt}{c |}{res}         1 
+{txt}        45 {c |}{res}         0          1 {txt}{c |}{res}         1 
+{txt}        46 {c |}{res}         1          0 {txt}{c |}{res}         1 
+{txt}        47 {c |}{res}         0          1 {txt}{c |}{res}         1 
+{txt}        48 {c |}{res}         0          1 {txt}{c |}{res}         1 
+{txt}        49 {c |}{res}         0          1 {txt}{c |}{res}         1 
+{txt}        50 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}        51 {c |}{res}         0          1 {txt}{c |}{res}         1 
+{txt}        52 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}        53 {c |}{res}         1          0 {txt}{c |}{res}         1 
+{txt}        54 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}        55 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}        56 {c |}{res}         0          1 {txt}{c |}{res}         1 
+{txt}        57 {c |}{res}         0          1 {txt}{c |}{res}         1 
+{txt}        58 {c |}{res}         1          0 {txt}{c |}{res}         1 
+{txt}        59 {c |}{res}         0          1 {txt}{c |}{res}         1 
+{txt}        60 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}        61 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}        62 {c |}{res}         1          0 {txt}{c |}{res}         1 
+{txt}        63 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}        64 {c |}{res}         0          1 {txt}{c |}{res}         1 
+{txt}        65 {c |}{res}         0          1 {txt}{c |}{res}         1 
+{txt}        66 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}        67 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}        68 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}        69 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}        70 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}        71 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}        72 {c |}{res}         1          1 {txt}{c |}{res}         2 
+{txt}{hline 11}{c +}{hline 22}{c +}{hline 10}
+     Total {c |}{res}        52         52 {txt}{c |}{res}       104 
+{txt}
+{com}. 
+. 
+. *======================================================================*
+. * 7.16 VERIFICATION GLOBALE
+. *======================================================================*
+. 
+. di as result ""
+{res}
+{txt}
+{com}. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. di as result "PARENT ASSIGNMENT BY TREATMENT ARM"
+{res}PARENT ASSIGNMENT BY TREATMENT ARM
+{txt}
+{com}. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. 
+. tab group3 parent_group ///
+>     if treated == 1, ///
+>     missing
+
+                      {txt}{c |}   Targeted parent:
+ Randomized treatment {c |}     Mother/Father
+                  arm {c |}    Mother     Father {c |}     Total
+{hline 22}{c +}{hline 22}{c +}{hline 10}
+             Salience {c |}{res}        26         26 {txt}{c |}{res}        52 
+{txt}Salience + Implementa {c |}{res}        26         26 {txt}{c |}{res}        52 
+{txt}{hline 22}{c +}{hline 22}{c +}{hline 10}
+                Total {c |}{res}        52         52 {txt}{c |}{res}       104 
+{txt}
+{com}. 
+. 
+. *======================================================================*
+. * 7.17 EXTRACTION DES EFFECTIFS
+. *======================================================================*
+. 
+. quietly count ///
+>     if group3 == 2 ///
+>     & parent_group == 1
+{txt}
+{com}. 
+. local mother_salience = r(N)
+{txt}
+{com}. 
+. 
+. quietly count ///
+>     if group3 == 2 ///
+>     & parent_group == 2
+{txt}
+{com}. 
+. local father_salience = r(N)
+{txt}
+{com}. 
+. 
+. quietly count ///
+>     if group3 == 3 ///
+>     & parent_group == 1
+{txt}
+{com}. 
+. local mother_impl = r(N)
+{txt}
+{com}. 
+. 
+. quietly count ///
+>     if group3 == 3 ///
+>     & parent_group == 2
+{txt}
+{com}. 
+. local father_impl = r(N)
+{txt}
+{com}. 
+. 
+. *======================================================================*
+. * 7.18 EFFECTIFS DES BRAS
+. *======================================================================*
+. 
+. quietly count if group3 == 1
+{txt}
+{com}. local n_control = r(N)
+{txt}
+{com}. 
+. quietly count if group3 == 2
+{txt}
+{com}. local n_salience = r(N)
+{txt}
+{com}. 
+. quietly count if group3 == 3
+{txt}
+{com}. local n_impl = r(N)
+{txt}
+{com}. 
+. 
+. di as result ""
+{res}
+{txt}
+{com}. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. di as result "EFFECTIFS DES BRAS"
+{res}EFFECTIFS DES BRAS
+{txt}
+{com}. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. 
+. di as result "Control                   : `n_control'"
+{res}Control                   : 52
+{txt}
+{com}. di as result "Salience                  : `n_salience'"
+{res}Salience                  : 52
+{txt}
+{com}. di as result "Salience + Implementation : `n_impl'"
+{res}Salience + Implementation : 52
+{txt}
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * VERIFICATION ATTENDUE
+. *----------------------------------------------------------------------*
+. 
+. assert `n_salience' == 52
+{txt}
+{com}. assert `n_impl' == 52
+{txt}
+{com}. 
+. 
+. *======================================================================*
+. * 7.19 RESULTATS MOTHER / FATHER
+. *======================================================================*
+. 
+. di as result ""
+{res}
+{txt}
+{com}. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. di as result "RESULTATS PARENT"
+{res}RESULTATS PARENT
+{txt}
+{com}. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. 
+. di as result ""
+{res}
+{txt}
+{com}. di as result "Salience :"
+{res}Salience :
+{txt}
+{com}. di as result "  Mother = `mother_salience'"
+{res}  Mother = 26
+{txt}
+{com}. di as result "  Father = `father_salience'"
+{res}  Father = 26
+{txt}
+{com}. 
+. di as result ""
+{res}
+{txt}
+{com}. di as result "Salience + Implementation :"
+{res}Salience + Implementation :
+{txt}
+{com}. di as result "  Mother = `mother_impl'"
+{res}  Mother = 26
+{txt}
+{com}. di as result "  Father = `father_impl'"
+{res}  Father = 26
+{txt}
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * VERIFICATION DES TOTAUX
+. *----------------------------------------------------------------------*
+. 
+. assert ///
+>     `mother_salience' + `father_salience' == 52
+{txt}
+{com}. 
+. assert ///
+>     `mother_impl' + `father_impl' == 52
+{txt}
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * ECART MOTHER / FATHER
+. *----------------------------------------------------------------------*
+. 
+. local diff_sal = ///
+>     abs(`mother_salience' - `father_salience')
+{txt}
+{com}. 
+. local diff_impl = ///
+>     abs(`mother_impl' - `father_impl')
+{txt}
+{com}. 
+. 
+. di as result ""
+{res}
+{txt}
+{com}. di as result "Difference Salience                  : `diff_sal'"
+{res}Difference Salience                  : 0
+{txt}
+{com}. di as result "Difference Salience + Implementation : `diff_impl'"
+{res}Difference Salience + Implementation : 0
+{txt}
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * EQUILIBRE MAXIMAL
+. *----------------------------------------------------------------------*
+. 
+. assert `diff_sal' <= 1
+{txt}
+{com}. assert `diff_impl' <= 1
+{txt}
+{com}. 
+. 
+. *======================================================================*
+. * 7.20 CONTROLE EXACT 26 / 26
+. *======================================================================*
+. *
+. * Puisque chaque bras traite comporte 52 ecoles, le meilleur equilibre
+. * possible est exactement :
+. *
+. *       26 Mother
+. *       26 Father
+. *
+. *----------------------------------------------------------------------*
+. 
+. assert `mother_salience' == 26
+{txt}
+{com}. assert `father_salience' == 26
+{txt}
+{com}. 
+. assert `mother_impl' == 26
+{txt}
+{com}. assert `father_impl' == 26
+{txt}
+{com}. 
+. 
+. di as result ""
+{res}
+{txt}
+{com}. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. di as result "FINAL PARENT BALANCE"
+{res}FINAL PARENT BALANCE
+{txt}
+{com}. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. 
+. di as result ///
+>     "Salience                  : 26 Mother / 26 Father"
+{res}Salience                  : 26 Mother / 26 Father
+{txt}
+{com}. 
+. di as result ///
+>     "Salience + Implementation : 26 Mother / 26 Father"
+{res}Salience + Implementation : 26 Mother / 26 Father
+{txt}
+{com}. 
+. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. 
+. 
+. *======================================================================*
+. * 7.21 CONTROLES DE COHERENCE INTERNES
+. *======================================================================*
+. 
+. *----------------------------------------------------------------------*
+. * Toutes les ecoles traitees doivent avoir un parent.
+. *----------------------------------------------------------------------*
+. 
+. quietly count if treated == 1 & missing(parent_group)
+{txt}
+{com}. 
+. assert r(N) == 0
+{txt}
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * Aucune ecole Control ne doit avoir de parent.
+. *----------------------------------------------------------------------*
+. 
+. quietly count if treated == 0 & !missing(parent_group)
+{txt}
+{com}. 
+. assert r(N) == 0
+{txt}
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * Toutes les cellules bloc x bras traitees doivent avoir une
+. * attribution parent.
+. *----------------------------------------------------------------------*
+. 
+. quietly count if treated == 1 & missing(bloc_arm)
+{txt}
+{com}. 
+. assert r(N) == 0
+{txt}
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * Toutes les cellules paires sont exactement 50/50.
+. *----------------------------------------------------------------------*
+. 
+. preserve
+{txt}
+{com}. 
+.     contract bloc_arm parent_group ///
+>         if treated == 1, ///
+>         freq(n)
+{txt}
+{com}. 
+.     bysort bloc_arm: egen cell_min = min(n)
+{txt}
+{com}.     bysort bloc_arm: egen cell_max = max(n)
+{txt}
+{com}. 
+.     quietly count if cell_min != cell_max
+{txt}
+{com}. 
+.     local unequal_even = r(N)
+{txt}
+{com}. 
+. restore
+{txt}
+{com}. 
+. 
+. di as result ""
+{res}
+{txt}
+{com}. di as result ///
+>     "Controle des cellules bloc x bras termine."
+{res}Controle des cellules bloc x bras termine.
+{txt}
+{com}. 
+. 
+. *======================================================================*
+. * 7.22 RESUME FINAL
+. *======================================================================*
+. 
+. di as result ""
+{res}
+{txt}
+{com}. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. di as result "RESUME RANDOMISATION PARENT"
+{res}RESUME RANDOMISATION PARENT
+{txt}
+{com}. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. 
+. di as result "Seed parent : $SEED_PARENT"
+{res}Seed parent : 20260101
+{txt}
+{com}. 
+. di as result "Control : `n_control'"
+{res}Control : 52
+{txt}
+{com}. 
+. di as result ///
+>     "Salience : `n_salience'"
+{res}Salience : 52
+{txt}
+{com}. 
+. di as result ///
+>     "Salience + Implementation : `n_impl'"
+{res}Salience + Implementation : 52
+{txt}
+{com}. 
+. di as result ""
+{res}
+{txt}
+{com}. 
+. di as result ///
+>     "Salience -> Mother = `mother_salience' ; Father = `father_salience'"
+{res}Salience -> Mother = 26 ; Father = 26
+{txt}
+{com}. 
+. di as result ///
+>     "Implementation -> Mother = `mother_impl' ; Father = `father_impl'"
+{res}Implementation -> Mother = 26 ; Father = 26
+{txt}
+{com}. 
+. di as result ""
+{res}
+{txt}
+{com}. 
+. di as result "Balance parent : OK"
+{res}Balance parent : OK
+{txt}
+{com}. 
+. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. 
+. 
+. *======================================================================*
+. * FIN SECTION 7
+. *======================================================================*
+. 
+. 
+. *======================================================================*
+. * 8. TESTS D'EQUILIBRE
+. *======================================================================*
+. 
+. di as result ""
+{res}
+{txt}
+{com}. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. di as result "TESTS D'EQUILIBRE"
+{res}TESTS D'EQUILIBRE
+{txt}
+{com}. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * EQUILIBRE PAR COMMUNE
+. *----------------------------------------------------------------------*
+. 
+. tab COMMUNE group3, chi2
+
+                {txt}{c |}     Randomized treatment arm
+        COMMUNE {c |}   Control   Salience  Salience  {c |}     Total
+{hline 16}{c +}{hline 33}{c +}{hline 10}
+         ABOMEY {c |}{res}         2          2          2 {txt}{c |}{res}         6 
+{txt}  ABOMEY-CALAVI {c |}{res}         7          6          6 {txt}{c |}{res}        19 
+{txt}   AGBANGNIZOUN {c |}{res}         3          3          2 {txt}{c |}{res}         8 
+{txt}         ALLADA {c |}{res}         5          5          4 {txt}{c |}{res}        14 
+{txt}        BOHICON {c |}{res}         3          3          4 {txt}{c |}{res}        10 
+{txt}           COVE {c |}{res}         1          2          2 {txt}{c |}{res}         5 
+{txt}         DJIDJA {c |}{res}         3          3          3 {txt}{c |}{res}         9 
+{txt}       KPOMASSE {c |}{res}         4          3          3 {txt}{c |}{res}        10 
+{txt}         OUIDAH {c |}{res}         3          3          3 {txt}{c |}{res}         9 
+{txt}         OUINHI {c |}{res}         2          2          2 {txt}{c |}{res}         6 
+{txt}         SO-AVA {c |}{res}         2          2          1 {txt}{c |}{res}         5 
+{txt}          TOFFO {c |}{res}         3          2          4 {txt}{c |}{res}         9 
+{txt}   TORI-BOSSITO {c |}{res}         2          3          3 {txt}{c |}{res}         8 
+{txt}       ZA-KPOTA {c |}{res}         3          2          3 {txt}{c |}{res}         8 
+{txt}      ZAGNANADO {c |}{res}         2          4          2 {txt}{c |}{res}         8 
+{txt}             ZE {c |}{res}         3          3          4 {txt}{c |}{res}        10 
+{txt}     ZOGBODOMEY {c |}{res}         4          4          4 {txt}{c |}{res}        12 
+{txt}{hline 16}{c +}{hline 33}{c +}{hline 10}
+          Total {c |}{res}        52         52         52 {txt}{c |}{res}       156 
+
+{txt}         Pearson chi2({res}32{txt}) = {res}  4.0648  {txt} Pr = {res}1.000
+{txt}
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * EQUILIBRE PAR TAILLE
+. *----------------------------------------------------------------------*
+. 
+. tab size_label group3, chi2
+
+           {txt}{c |}     Randomized treatment arm
+size_label {c |}   Control   Salience  Salience  {c |}     Total
+{hline 11}{c +}{hline 33}{c +}{hline 10}
+     Large {c |}{res}        26         23         25 {txt}{c |}{res}        74 
+{txt}     Small {c |}{res}        26         29         27 {txt}{c |}{res}        82 
+{txt}{hline 11}{c +}{hline 33}{c +}{hline 10}
+     Total {c |}{res}        52         52         52 {txt}{c |}{res}       156 
+
+{txt}          Pearson chi2({res}2{txt}) = {res}  0.3599  {txt} Pr = {res}0.835
+{txt}
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * EQUILIBRE PAR MILIEU
+. *----------------------------------------------------------------------*
+. 
+. tab MILIEU_EQUIPE group3, chi2
+
+{txt}MILIEU_EQUI {c |}     Randomized treatment arm
+         PE {c |}   Control   Salience  Salience  {c |}     Total
+{hline 12}{c +}{hline 33}{c +}{hline 10}
+Peri-urbain {c |}{res}        28         25         28 {txt}{c |}{res}        81 
+{txt}      Rural {c |}{res}        24         27         24 {txt}{c |}{res}        75 
+{txt}{hline 12}{c +}{hline 33}{c +}{hline 10}
+      Total {c |}{res}        52         52         52 {txt}{c |}{res}       156 
+
+{txt}          Pearson chi2({res}2{txt}) = {res}  0.4622  {txt} Pr = {res}0.794
+{txt}
+{com}. 
+. 
+. *----------------------------------------------------------------------*
+. * BALANCE VARIABLES
+. *----------------------------------------------------------------------*
+. 
+. local balance_vars ///
+>     target_enrol ///
+>     NBM6EME ///
+>     NBM5EME ///
+>     SALLESCLASSESTOT ///
+>     EXISTENCEEAU ///
+>     EXISTENCEELECT ///
+>     EXISTENCELATRINES ///
+>     EXISTENCEINFRASTSPORT
+{txt}
+{com}. 
+. 
+. foreach v of local balance_vars {c -(}
+{txt}  2{com}. 
+.     capture confirm numeric variable `v'
+{txt}  3{com}. 
+.     if !_rc {c -(}
+{txt}  4{com}. 
+.         di as text _newline ///
+>             "--- Balance : `v' ---"
+{txt}  5{com}. 
+.         quietly regress ///
+>             `v' i.group3 i.bloc, ///
+>             vce(robust)
+{txt}  6{com}. 
+.         testparm i.group3
+{txt}  7{com}.     {c )-}
+{txt}  8{com}. {c )-}
+
+{txt}--- Balance : target_enrol ---
+
+{p 0 7}{space 1}{text:( 1)}{space 1} {res}2.group3 = 0{p_end}
+{p 0 7}{space 1}{text:( 2)}{space 1} 3.group3 = 0{p_end}
+
+{txt}       F(  2,   117) ={res}    0.43
+{txt}{col 13}Prob > F ={res}    0.6500
+
+{txt}--- Balance : NBM6EME ---
+
+{p 0 7}{space 1}{text:( 1)}{space 1} {res}2.group3 = 0{p_end}
+{p 0 7}{space 1}{text:( 2)}{space 1} 3.group3 = 0{p_end}
+
+{txt}       F(  2,   117) ={res}    0.18
+{txt}{col 13}Prob > F ={res}    0.8377
+
+{txt}--- Balance : NBM5EME ---
+
+{p 0 7}{space 1}{text:( 1)}{space 1} {res}2.group3 = 0{p_end}
+{p 0 7}{space 1}{text:( 2)}{space 1} 3.group3 = 0{p_end}
+
+{txt}       F(  2,   117) ={res}    0.53
+{txt}{col 13}Prob > F ={res}    0.5928
+
+{txt}--- Balance : SALLESCLASSESTOT ---
+
+{p 0 7}{space 1}{text:( 1)}{space 1} {res}2.group3 = 0{p_end}
+{p 0 7}{space 1}{text:( 2)}{space 1} 3.group3 = 0{p_end}
+
+{txt}       F(  2,   117) ={res}    1.79
+{txt}{col 13}Prob > F ={res}    0.1722
+
+{txt}--- Balance : EXISTENCEEAU ---
+
+{p 0 7}{space 1}{text:( 1)}{space 1} {res}2.group3 = 0{p_end}
+{p 0 7}{space 1}{text:( 2)}{space 1} 3.group3 = 0{p_end}
+
+{txt}       F(  2,   117) ={res}    0.10
+{txt}{col 13}Prob > F ={res}    0.9020
+
+{txt}--- Balance : EXISTENCEELECT ---
+
+{p 0 7}{space 1}{text:( 1)}{space 1} {res}2.group3 = 0{p_end}
+{p 0 7}{space 1}{text:( 2)}{space 1} 3.group3 = 0{p_end}
+
+{txt}       F(  2,   117) ={res}    0.08
+{txt}{col 13}Prob > F ={res}    0.9233
+
+{txt}--- Balance : EXISTENCELATRINES ---
+
+{p 0 7}{space 1}{text:( 1)}{space 1} {res}2.group3 = 0{p_end}
+{p 0 7}{space 1}{text:( 2)}{space 1} 3.group3 = 0{p_end}
+
+{txt}       F(  2,   117) ={res}    1.67
+{txt}{col 13}Prob > F ={res}    0.1922
+
+{txt}--- Balance : EXISTENCEINFRASTSPORT ---
+
+{p 0 7}{space 1}{text:( 1)}{space 1} {res}2.group3 = 0{p_end}
+{p 0 7}{space 1}{text:( 2)}{space 1} 3.group3 = 0{p_end}
+
+{txt}       F(  2,   117) ={res}    1.58
+{txt}{col 13}Prob > F ={res}    0.2110
+{txt}
+{com}. 
+. 
+. *======================================================================*
+. * 9. PREPARATION DE L'EXPORT
+. *======================================================================*
+. 
+. capture drop group3_lbl
+{txt}
+{com}. 
+. gen str35 group3_lbl = ""
+{txt}(156 missing values generated)
+
+{com}. 
+. replace group3_lbl = ///
+>     "Control" ///
+>     if group3 == 1
+{txt}(52 real changes made)
+
+{com}. 
+. replace group3_lbl = ///
+>     "Salience" ///
+>     if group3 == 2
+{txt}(52 real changes made)
+
+{com}. 
+. replace group3_lbl = ///
+>     "Salience + Implementation" ///
+>     if group3 == 3
+{txt}(52 real changes made)
+
+{com}. 
+. 
+. capture drop parent_lbl2
+{txt}
+{com}. 
+. gen str12 parent_lbl2 = ""
+{txt}(156 missing values generated)
+
+{com}. 
+. replace parent_lbl2 = ///
+>     "Mother" ///
+>     if parent_group == 1
+{txt}(52 real changes made)
+
+{com}. 
+. replace parent_lbl2 = ///
+>     "Father" ///
+>     if parent_group == 2
+{txt}(52 real changes made)
+
+{com}. 
+. replace parent_lbl2 = ///
+>     "N/A" ///
+>     if treated == 0
+{txt}(52 real changes made)
+
+{com}. 
+. 
+. *======================================================================*
+. * 10. EXPORT EXCEL
+. *======================================================================*
+. 
+. preserve
+{txt}
+{com}. 
+.     keep ///
+>         id_infra ///
+>         DEPARTEMENT ///
+>         COMMUNE ///
+>         ARRONDISSEMENT ///
+>         NOMETABLISSEMENT ///
+>         MILIEU_EQUIPE ///
+>         size_label ///
+>         strate_label ///
+>         bloc ///
+>         group3_lbl ///
+>         parent_lbl2 ///
+>         target_enrol ///
+>         med_enrol
+{txt}
+{com}. 
+. 
+.     rename size_label ///
+>         size_category
+{res}{txt}
+{com}. 
+.     rename group3_lbl ///
+>         assigned_group
+{res}{txt}
+{com}. 
+.     rename parent_lbl2 ///
+>         targeted_parent
+{res}{txt}
+{com}. 
+. 
+.     order ///
+>         id_infra ///
+>         DEPARTEMENT ///
+>         COMMUNE ///
+>         ARRONDISSEMENT ///
+>         NOMETABLISSEMENT ///
+>         MILIEU_EQUIPE ///
+>         size_category ///
+>         strate_label ///
+>         bloc ///
+>         assigned_group ///
+>         targeted_parent ///
+>         target_enrol ///
+>         med_enrol
+{txt}
+{com}. 
+. 
+.     sort bloc id_infra
+{txt}
+{com}. 
+. 
+.     export excel ///
+>         using "$outputdir/randomization_final_v2.xlsx", ///
+>         firstrow(variables) ///
+>         replace ///
+>         sheet("randomization")
+{res}{txt}file {bf:C:\RONALDO\CKDEV\GENDER NORMS\Randomization\Lucien_v2\Outputs/randomization_final_v2.xlsx} saved
+
+{com}. 
+. restore
+{txt}
+{com}. 
+. 
+. *======================================================================*
+. * 11. SAUVEGARDE DATASET FINAL
+. *======================================================================*
+. 
+. save ///
+>     "$outputdir/randomization_final_v2_locked_`timestamp'.dta", ///
+>     replace
+{txt}{p 0 4 2}
+(file {bf}
+C:\RONALDO\CKDEV\GENDER NORMS\Randomization\Lucien_v2\Outputs/randomization_final_v2_locked_2026-08-31_17-12-49.dta{rm}
+not found)
+{p_end}
+{p 0 4 2}
+file {bf}
+C:\RONALDO\CKDEV\GENDER NORMS\Randomization\Lucien_v2\Outputs/randomization_final_v2_locked_2026-08-31_17-12-49.dta{rm}
+saved
+{p_end}
+
+{com}. 
+. 
+. *======================================================================*
+. * 12. MANIFESTE
+. *======================================================================*
+. 
+. datasignature
+  {res}156:98(38317):1270644524:3331512702
+{txt}
+{com}. 
+. local sig = r(datasignature)
+{txt}
+{com}. 
+. 
+. file open manifest using ///
+>     "$outputdir/randomization_v2_manifest_`timestamp'.txt", ///
+>     write ///
+>     replace
+{txt}{p 0 4 2}
+(file {bf}
+C:\RONALDO\CKDEV\GENDER NORMS\Randomization\Lucien_v2\Outputs/randomization_v2_manifest_2026-08-31_17-12-49.txt{rm}
+not found)
+{p_end}
+
+{com}. 
+. 
+. file write manifest ///
+>     "RANDOMIZATION MANIFEST v2 - Gender Norms RCT" _n
+{txt}
+{com}. 
+. file write manifest ///
+>     "==============================================" _n
+{txt}
+{com}. 
+. file write manifest ///
+>     "Date/heure       : $S_DATE $S_TIME" _n
+{txt}
+{com}. 
+. file write manifest ///
+>     "SEED_BLOCKS      : $SEED_BLOCKS" _n
+{txt}
+{com}. 
+. file write manifest ///
+>     "SEED_ARMS        : $SEED_ARMS" _n
+{txt}
+{com}. 
+. file write manifest ///
+>     "SEED_PARENT      : $SEED_PARENT" _n
+{txt}
+{com}. 
+. file write manifest ///
+>     "N ecoles         : 156" _n
+{txt}
+{com}. 
+. file write manifest ///
+>     "Regle de taille  : mediane communale, filles 6e+5e" _n
+{txt}
+{com}. 
+. file write manifest ///
+>     "Strates          : commune x size_label, INDEPENDANTES" _n
+{txt}
+{com}. 
+. file write manifest ///
+>     "Fusion cross-commune : AUCUNE" _n
+{txt}
+{com}. 
+. file write manifest ///
+>     "Dernier bloc     : taille = reste de la strate" _n
+{txt}
+{com}. 
+. file write manifest ///
+>     "Parent           : imbrique dans bloc x bras" _n
+{txt}
+{com}. 
+. file write manifest ///
+>     "Parent balance   : 26 Mother / 26 Father par bras traite" _n
+{txt}
+{com}. 
+. file write manifest ///
+>     "Checksum         : `sig'" _n
+{txt}
+{com}. 
+. 
+. file close manifest
+{txt}
+{com}. 
+. 
+. *======================================================================*
+. * 13. FIN
+. *======================================================================*
+. 
+. di as result ""
+{res}
+{txt}
+{com}. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. di as result "RANDOMISATION V2 TERMINEE"
+{res}RANDOMISATION V2 TERMINEE
+{txt}
+{com}. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. 
+. di as result "156 ecoles randomisees."
+{res}156 ecoles randomisees.
+{txt}
+{com}. 
+. di as result "Bras :"
+{res}Bras :
+{txt}
+{com}. 
+. tab group3
+
+ {txt}Randomized treatment arm {c |}      Freq.     Percent        Cum.
+{hline 26}{c +}{hline 35}
+                  Control {c |}{res}         52       33.33       33.33
+{txt}                 Salience {c |}{res}         52       33.33       66.67
+{txt}Salience + Implementation {c |}{res}         52       33.33      100.00
+{txt}{hline 26}{c +}{hline 35}
+                    Total {c |}{res}        156      100.00
+{txt}
+{com}. 
+. di as result ""
+{res}
+{txt}
+{com}. 
+. di as result "Parents :"
+{res}Parents :
+{txt}
+{com}. 
+. tab group3 parent_group if treated == 1
+
+                      {txt}{c |}   Targeted parent:
+ Randomized treatment {c |}     Mother/Father
+                  arm {c |}    Mother     Father {c |}     Total
+{hline 22}{c +}{hline 22}{c +}{hline 10}
+             Salience {c |}{res}        26         26 {txt}{c |}{res}        52 
+{txt}Salience + Implementa {c |}{res}        26         26 {txt}{c |}{res}        52 
+{txt}{hline 22}{c +}{hline 22}{c +}{hline 10}
+                Total {c |}{res}        52         52 {txt}{c |}{res}       104 
+{txt}
+{com}. 
+. di as result ""
+{res}
+{txt}
+{com}. 
+. di as result "Reproductibilite bras : CONFIRMEE"
+{res}Reproductibilite bras : CONFIRMEE
+{txt}
+{com}. 
+. di as result "Reproductibilite parent : CONFIRMEE"
+{res}Reproductibilite parent : CONFIRMEE
+{txt}
+{com}. 
+. di as result "Parent balance :"
+{res}Parent balance :
+{txt}
+{com}. 
+. di as result ///
+>     "Salience = 26 Mother / 26 Father"
+{res}Salience = 26 Mother / 26 Father
+{txt}
+{com}. 
+. di as result ///
+>     "Salience + Implementation = 26 Mother / 26 Father"
+{res}Salience + Implementation = 26 Mother / 26 Father
+{txt}
+{com}. 
+. di as result "======================================================="
+{res}=======================================================
+{txt}
+{com}. 
+. 
+. log close
+      {txt}name:  {res}<unnamed>
+       {txt}log:  {res}C:\RONALDO\CKDEV\GENDER NORMS\Randomization\Lucien_v2\Outputs/randomization_v2_log_2026-08-31_17-12-49.smcl
+  {txt}log type:  {res}smcl
+ {txt}closed on:  {res}31 Aug 2026, 17:12:51
+{txt}{.-}
+{smcl}
+{txt}{sf}{ul off}

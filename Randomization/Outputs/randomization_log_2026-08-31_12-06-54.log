@@ -1,0 +1,2545 @@
+------------------------------------------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  C:\RONALDO\CKDEV\GENDER NORMS\Randomization\Outputs/randomization_log_2026-08-31_12-06-54.log
+  log type:  text
+ opened on:  31 Aug 2026, 12:06:54
+
+. 
+. 
+. set rng mt64
+
+. 
+. di as result "======================================================="
+=======================================================
+
+. di as result "GENDER NORMS RCT - RANDOMIZATION (v2)"
+GENDER NORMS RCT - RANDOMIZATION (v2)
+
+. di as result "======================================================="
+=======================================================
+
+. di as result "SEED_BLOCKS = $SEED_BLOCKS"
+SEED_BLOCKS = 20260827
+
+. di as result "SEED_ARMS   = $SEED_ARMS"
+SEED_ARMS   = 20260904
+
+. di as result "SEED_PARENT = $SEED_PARENT"
+SEED_PARENT = 20260829
+
+. di as result "======================================================="
+=======================================================
+
+. 
+. 
+. *======================================================================*
+. * 1. IMPORT AND VALIDATION
+. *======================================================================*
+. 
+. import excel using "$infile", firstrow clear case(upper)
+(68 vars, 156 obs)
+
+. 
+. *----------------------------------------------------------------------*
+. * School identifier
+. *----------------------------------------------------------------------*
+. 
+. capture confirm variable id_infra
+
+. 
+. if _rc {
+. 
+.     capture confirm variable SCHOOL_ID
+. 
+.     if _rc {
+.         di as error "Neither id_infra nor SCHOOL_ID exists."
+.         exit 111
+.     }
+. 
+.     quietly count if missing(SCHOOL_ID)
+. 
+.     if r(N) > 0 {
+.         di as error "`r(N)' schools have missing SCHOOL_ID."
+.         exit 459
+.     }
+. 
+.     quietly duplicates report SCHOOL_ID
+. 
+.     if r(unique_value) < r(N) {
+.         di as error "SCHOOL_ID is not unique."
+.         exit 459
+.     }
+. 
+.     egen long id_infra = group(SCHOOL_ID)
+. 
+. }
+
+. 
+. isid id_infra
+
+. 
+. 
+. *----------------------------------------------------------------------*
+. * Required variables
+. *----------------------------------------------------------------------*
+. 
+. foreach v of varlist DEPARTEMENT COMMUNE NOMETABLISSEMENT {
+  2. 
+.     quietly count if missing(`v')
+  3. 
+.     if r(N) > 0 {
+  4.         di as error "`r(N)' observations have missing `v'."
+  5.         exit 459
+  6.     }
+  7. 
+. }
+
+. 
+. 
+. *----------------------------------------------------------------------*
+. * Grade enrolment variables
+. *----------------------------------------------------------------------*
+. 
+. egen byte miss_grade = rmiss( ///
+>     NBM6EME NBF6EME NBM5EME NBF5EME ///
+> )
+
+. 
+. quietly count if miss_grade > 0
+
+. 
+. if r(N) > 0 {
+. 
+.     di as error ///
+>         "`r(N)' schools have missing 6eme/5eme enrolment."
+. 
+.     exit 459
+. 
+. }
+
+. 
+. drop miss_grade
+
+. 
+. 
+. *----------------------------------------------------------------------*
+. * Public schools / departments
+. *----------------------------------------------------------------------*
+. 
+. quietly count if ///
+>     !inlist(upper(strtrim(STATUT)), "PUBLIC", "PUBLIQUE")
+
+. 
+. if r(N) > 0 {
+. 
+.     di as error ///
+>         "`r(N)' non-public schools detected."
+. 
+.     exit 459
+. 
+. }
+
+. 
+. 
+. quietly count if ///
+>     !inlist(upper(strtrim(DEPARTEMENT)), "ZOU", "ATLANTIQUE")
+
+. 
+. if r(N) > 0 {
+. 
+.     di as error ///
+>         "`r(N)' schools outside Zou/Atlantique detected."
+. 
+.     exit 459
+. 
+. }
+
+. 
+. 
+. *----------------------------------------------------------------------*
+. * Technical string normalization
+. *----------------------------------------------------------------------*
+. 
+. foreach v of varlist ///
+>     DEPARTEMENT COMMUNE ARRONDISSEMENT ///
+>     QUARTIERVILLAGE NOMETABLISSEMENT ///
+>     STATUT MILIEU REGIME {
+  2. 
+.     capture confirm string variable `v'
+  3. 
+.     if !_rc {
+  4.         replace `v' = strtrim(stritrim(upper(`v')))
+  5.     }
+  6. 
+. }
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(156 real changes made)
+(0 real changes made)
+(156 real changes made)
+
+. 
+. capture confirm string variable MILIEU_ADMIN
+
+. 
+. if !_rc {
+.     replace MILIEU_ADMIN = ///
+>         strtrim(stritrim(upper(MILIEU_ADMIN)))
+(156 real changes made)
+. }
+
+. 
+. 
+. di as result ///
+>     "Input validated: `=_N' schools."
+Input validated: 156 schools.
+
+. 
+. save "$outputdir/ecoles_valid_step1.dta", replace
+file Outputs/ecoles_valid_step1.dta saved
+
+. 
+. 
+. *======================================================================*
+. * 2. SCHOOL SIZE CLASSIFICATION
+. *======================================================================*
+. *
+. * ======================================================================
+. * >>> POINT 2 DU RETOUR PI (Mahounan) - premiere moitie <<<
+. *
+. *   "Small et Large doivent etre de vraies strates separees. [...]
+. *    on separe les ecoles, dans chaque commune, en deux strates :
+. *    Small (<= mediane d'effectif de la commune) et Large (> mediane)."
+. *
+. * Cette classification Small/Large est produite ICI (inchangee par
+. * rapport a la version precedente). La partie "blocs construits
+. * SEPAREMENT dans chaque strate" du Point 2 est mise en oeuvre plus
+. * loin, en Section 3.
+. * ======================================================================
+. *
+. * Target variable:
+. *
+. *     total enrolment in 6eme + 5eme
+. *
+. * Classification within each commune:
+. *
+. *     <= commune median  -> Small
+. *     >  commune median  -> Large
+. *
+. *======================================================================*
+. 
+. gen long target_enrol = ///
+>       NBF6EME + ///
+>      NBF5EME
+
+. 
+. label var target_enrol ///
+>     "Total enrolment in 6eme and 5eme"
+
+. 
+. 
+. bysort COMMUNE: gen long n_comm = _N
+
+. 
+. bysort COMMUNE: egen double med_enrol = ///
+>     median(target_enrol)
+
+. 
+. label var med_enrol ///
+>     "Median target enrolment within commune"
+
+. 
+. 
+. gen str8 size_label = ""
+(156 missing values generated)
+
+. 
+. replace size_label = "Small" ///
+>     if target_enrol <= med_enrol
+(82 real changes made)
+
+. 
+. replace size_label = "Large" ///
+>     if target_enrol > med_enrol
+(74 real changes made)
+
+. 
+. label var size_label ///
+>     "Small/Large according to commune median"
+
+. 
+. 
+. tab COMMUNE size_label, missing
+
+              | Small/Large according
+              |   to commune median
+      COMMUNE |     Large      Small |     Total
+--------------+----------------------+----------
+       ABOMEY |         3          3 |         6 
+ABOMEY-CALAVI |         9         10 |        19 
+ AGBANGNIZOUN |         4          4 |         8 
+       ALLADA |         6          8 |        14 
+      BOHICON |         5          5 |        10 
+         COVE |         2          3 |         5 
+       DJIDJA |         4          5 |         9 
+     KPOMASSE |         5          5 |        10 
+       OUIDAH |         4          5 |         9 
+       OUINHI |         3          3 |         6 
+       SO-AVA |         2          3 |         5 
+        TOFFO |         4          5 |         9 
+ TORI-BOSSITO |         4          4 |         8 
+     ZA-KPOTA |         4          4 |         8 
+    ZAGNANADO |         4          4 |         8 
+           ZE |         5          5 |        10 
+   ZOGBODOMEY |         6          6 |        12 
+--------------+----------------------+----------
+        Total |        74         82 |       156 
+
+. 
+. 
+. *----------------------------------------------------------------------*
+. * Save classification
+. *----------------------------------------------------------------------*
+. 
+. save "$outputdir/ecoles_size_classified.dta", replace
+file Outputs/ecoles_size_classified.dta saved
+
+. 
+. 
+. *======================================================================*
+. * 3. CONSTRUCTION DES BLOCS DE RANDOMISATION (SANS FUSION INTER-COMMUNE)
+. *======================================================================*
+. *
+. * ======================================================================
+. * >>> POINT 2 DU RETOUR PI (Mahounan) - deuxieme moitie <<<
+. *
+. *   "Les blocs doivent etre construits separement a l'interieur de
+. *    chaque strate. Autrement dit, on construit des blocs entre
+. *    ecoles Small d'une meme commune, et separement des blocs entre
+. *    ecoles Large de cette meme commune."
+. *
+. *   => Mis en oeuvre ci-dessous via la variable "stratum_id" =
+. *      group(COMMUNE, size_label) : les blocs (Section 3D-3E) sont
+. *      TOUJOURS construits a l'interieur d'une seule et meme strate
+. *      (COMMUNE x Small/Large). Un bloc ne peut donc jamais melanger
+. *      Small et Large (verifie explicitement en 3F).
+. *
+. * >>> POINT 3 DU RETOUR PI (Mahounan) <<<
+. *
+. *   "Il ne faut pas emprunter des ecoles a d'autres communes. [...]
+. *    Chaque commune doit rester independante. Si une strate commune x
+. *    Small/Large ne contient pas exactement un multiple de 6 ecoles,
+. *    il faut simplement gerer le dernier bloc avec le nombre d'ecoles
+. *    restantes dans cette meme strate. Il ne faut pas deplacer des
+. *    ecoles d'une commune vers une autre."
+. *
+. *   => Toute la logique anterieure de pret/fusion inter-communes
+. *      (distances Floyd-Warshall, fichier de voisinage, prets de
+. *      surplus, fusion de secours) a ete SUPPRIMEE. La strate est
+. *      strictement (COMMUNE x Small/Large) et rien d'autre : un bloc
+. *      ne peut donc jamais melanger deux communes (verifie en 3F).
+. *      Le dernier bloc d'une strate recoit simplement le reste des
+. *      ecoles de CETTE MEME strate (Section 3D), sans jamais aller
+. *      chercher d'ecoles ailleurs.
+. *
+. * RESUME DE LA LOGIQUE (comme demande par le PI) :
+. *
+. *   Commune -> Small/Large -> blocs -> randomisation des 3 bras
+. *   (Section 5) -> randomisation Mere/Pere separement dans chacun
+. *   des deux bras traites (Section 6).
+. * ======================================================================
+. *
+. * OBJECTIF :
+. *
+. * Pour chaque strate (COMMUNE x Small/Large), construire des blocs
+. * d'environ 6 ecoles, en gardant CHAQUE COMMUNE STRICTEMENT AUTONOME
+. * (aucun pret, aucune fusion avec une autre commune) et en gardant
+. * Small et Large STRICTEMENT SEPARES (jamais melanges dans un bloc).
+. *
+. * Si une strate n'est pas un multiple exact de $MIN_BLOCK_SIZE, les
+. * blocs de 6 sont formes en premier, et le DERNIER bloc de cette
+. * strate recoit simplement les ecoles restantes (qui peuvent donc
+. * etre moins de 6). Aucune ecole ne quitte jamais sa commune.
+. *
+. *======================================================================*
+. 
+. use "$outputdir/ecoles_size_classified.dta", clear
+
+. 
+. isid id_infra
+
+. 
+. quietly count if !inlist(size_label,"Small","Large")
+
+. 
+. if r(N) > 0 {
+. 
+.     di as error ///
+>         "`r(N)' ecoles ont un size_label invalide."
+. 
+.     tab size_label, missing
+. 
+.     exit 459
+. }
+
+. 
+. 
+. *----------------------------------------------------------------------*
+. * 3A. IDENTIFIANT DE STRATE (commune x taille) - AUCUNE FUSION
+. *----------------------------------------------------------------------*
+. 
+. capture drop stratum_label
+
+. gen str160 stratum_label = COMMUNE + " - " + size_label
+
+. 
+. label var stratum_label ///
+>     "Randomization stratum (COMMUNE x Small/Large, no cross-commune fusion)"
+
+. 
+. capture drop stratum_id
+
+. egen long stratum_id = group(stratum_label)
+
+. 
+. label var stratum_id ///
+>     "Numeric id of stratum (COMMUNE x Small/Large)"
+
+. 
+. capture drop stratum_N
+
+. bysort stratum_id: gen long stratum_N = _N
+
+. 
+. label var stratum_N ///
+>     "Number of schools in this COMMUNE x Small/Large stratum"
+
+. 
+. 
+. di as result "======================================================="
+=======================================================
+
+. di as result "STRATES COMMUNE x TAILLE"
+STRATES COMMUNE x TAILLE
+
+. di as result "======================================================="
+=======================================================
+
+. 
+. preserve
+
+.     contract stratum_id stratum_label stratum_N
+
+.     sort stratum_id
+
+.     list, noobs sep(0)
+
+  +-----------------------------------------------------+
+  |         stratum_label   stratu~d   stratu~N   _freq |
+  |-----------------------------------------------------|
+  |        ABOMEY - Large          1          3       3 |
+  |        ABOMEY - Small          2          3       3 |
+  | ABOMEY-CALAVI - Large          3          9       9 |
+  | ABOMEY-CALAVI - Small          4         10      10 |
+  |  AGBANGNIZOUN - Large          5          4       4 |
+  |  AGBANGNIZOUN - Small          6          4       4 |
+  |        ALLADA - Large          7          6       6 |
+  |        ALLADA - Small          8          8       8 |
+  |       BOHICON - Large          9          5       5 |
+  |       BOHICON - Small         10          5       5 |
+  |          COVE - Large         11          2       2 |
+  |          COVE - Small         12          3       3 |
+  |        DJIDJA - Large         13          4       4 |
+  |        DJIDJA - Small         14          5       5 |
+  |      KPOMASSE - Large         15          5       5 |
+  |      KPOMASSE - Small         16          5       5 |
+  |        OUIDAH - Large         17          4       4 |
+  |        OUIDAH - Small         18          5       5 |
+  |        OUINHI - Large         19          3       3 |
+  |        OUINHI - Small         20          3       3 |
+  |        SO-AVA - Large         21          2       2 |
+  |        SO-AVA - Small         22          3       3 |
+  |         TOFFO - Large         23          4       4 |
+  |         TOFFO - Small         24          5       5 |
+  |  TORI-BOSSITO - Large         25          4       4 |
+  |  TORI-BOSSITO - Small         26          4       4 |
+  |      ZA-KPOTA - Large         27          4       4 |
+  |      ZA-KPOTA - Small         28          4       4 |
+  |     ZAGNANADO - Large         29          4       4 |
+  |     ZAGNANADO - Small         30          4       4 |
+  |            ZE - Large         31          5       5 |
+  |            ZE - Small         32          5       5 |
+  |    ZOGBODOMEY - Large         33          6       6 |
+  |    ZOGBODOMEY - Small         34          6       6 |
+  +-----------------------------------------------------+
+
+. restore
+
+. 
+. 
+. *----------------------------------------------------------------------*
+. * 3B. ORDRE ALEATOIRE DES ECOLES A L'INTERIEUR DE CHAQUE STRATE
+. *----------------------------------------------------------------------*
+. 
+. sort id_infra
+
+. 
+. set seed $SEED_BLOCKS
+
+. 
+. capture drop rand_block
+
+. gen double rand_block = runiform()
+
+. 
+. 
+. *----------------------------------------------------------------------*
+. * 3C. RANG DE CHAQUE ECOLE DANS SA PROPRE STRATE
+. *----------------------------------------------------------------------*
+. 
+. sort stratum_id rand_block
+
+. 
+. capture drop rank_in_stratum
+
+. by stratum_id: gen long rank_in_stratum = _n
+
+. 
+. quietly count if missing(rank_in_stratum)
+
+. 
+. if r(N) > 0 {
+. 
+.     di as error ///
+>         "`r(N)' ecoles n'ont pas de rang dans leur strate."
+. 
+.     exit 459
+. }
+
+. 
+. 
+. *----------------------------------------------------------------------*
+. * 3D. NUMERO DE BLOC A L'INTERIEUR DE LA STRATE
+. *
+. * Blocs pleins de $MIN_BLOCK_SIZE ecoles ; le DERNIER bloc de la
+. * strate recoit simplement le reste. ceil(rang / 6) produit
+. * exactement ce comportement, par exemple pour une strate de 19 :
+. *
+. *   rangs 1-6   -> bloc local 1  (6 ecoles)
+. *   rangs 7-12  -> bloc local 2  (6 ecoles)
+. *   rangs 13-18 -> bloc local 3  (6 ecoles)
+. *   rang 19     -> bloc local 4  (1 ecole - dernier bloc, reste)
+. *
+. * Aucun emprunt a une autre commune n'intervient a aucun moment.
+. *----------------------------------------------------------------------*
+. 
+. capture drop block_number_local
+
+. gen long block_number_local = ceil(rank_in_stratum / $MIN_BLOCK_SIZE)
+
+. 
+. capture drop n_blocks_stratum
+
+. bysort stratum_id: egen long n_blocks_stratum = max(block_number_local)
+
+. 
+. label var n_blocks_stratum ///
+>     "Number of blocks within this stratum"
+
+. 
+. 
+. *----------------------------------------------------------------------*
+. * 3E. IDENTIFIANT FINAL DU BLOC (commune x taille x bloc local)
+. *----------------------------------------------------------------------*
+. 
+. capture drop bloc
+
+. 
+. egen long bloc = group(stratum_id block_number_local)
+
+. 
+. label var bloc ///
+>     "Final randomization block (COMMUNE x Small/Large x bloc local)"
+
+. 
+. bysort bloc: gen long bloc_n = _N
+
+. 
+. label var bloc_n ///
+>     "Number of schools in final randomization block"
+
+. 
+. 
+. *----------------------------------------------------------------------*
+. * 3F. VERIFICATIONS DE COHERENCE
+. *----------------------------------------------------------------------*
+. 
+. quietly count if missing(bloc)
+
+. 
+. if r(N) > 0 {
+. 
+.     di as error ///
+>         "`r(N)' ecoles n'ont pas recu de bloc."
+. 
+.     exit 459
+. }
+
+. 
+. isid id_infra
+
+. 
+. 
+. * Un bloc ne doit jamais melanger deux communes.
+. sort bloc COMMUNE
+
+. capture drop _check_comm
+
+. by bloc: gen byte _check_comm = (COMMUNE[1] != COMMUNE[_N])
+
+. 
+. quietly count if _check_comm == 1
+
+. 
+. if r(N) > 0 {
+. 
+.     di as error ///
+>         "ERREUR : un bloc contient plusieurs communes."
+. 
+.     exit 459
+. }
+
+. 
+. drop _check_comm
+
+. 
+. 
+. * Un bloc ne doit jamais melanger Small et Large.
+. sort bloc size_label
+
+. capture drop _check_size
+
+. by bloc: gen byte _check_size = (size_label[1] != size_label[_N])
+
+. 
+. quietly count if _check_size == 1
+
+. 
+. if r(N) > 0 {
+. 
+.     di as error ///
+>         "ERREUR : un bloc melange Small et Large."
+. 
+.     exit 459
+. }
+
+. 
+. drop _check_size
+
+. 
+. 
+. di as result ///
+>     "VERIFICATION OK : chaque bloc appartient a UNE SEULE commune et" ///
+>     " a UNE SEULE strate Small/Large."
+VERIFICATION OK : chaque bloc appartient a UNE SEULE commune et a UNE SEULE strate Small/Large.
+
+. 
+. 
+. *----------------------------------------------------------------------*
+. * 3G. REPRODUCTIBILITE DE LA CONSTRUCTION DES BLOCS
+. *----------------------------------------------------------------------*
+. 
+. preserve
+
+. 
+.     sort id_infra
+
+. 
+.     set seed $SEED_BLOCKS
+
+. 
+.     gen double rand_block_chk = runiform()
+
+. 
+.     sort stratum_id rand_block_chk
+
+. 
+.     by stratum_id: gen long rank_chk = _n
+
+. 
+.     gen long block_chk = ceil(rank_chk / $MIN_BLOCK_SIZE)
+
+. 
+.     egen long bloc_chk = group(stratum_id block_chk)
+
+. 
+.     assert bloc == bloc_chk
+
+. 
+.     di as result ///
+>         "REPRODUCIBILITY CONFIRMED with seed $SEED_BLOCKS (rng: `c(rngstate)')."
+REPRODUCIBILITY CONFIRMED with seed 20260827 (rng: XAAe62668157c0f84f438c345118cd60c250b954c33da2c2d1181eb8a799ec38751ec
+> fb4921c52413d0f16f0855fa3a9d566efaabce66bb24829260a44844cdcc3befe597ef7e923f339ba1359694635c03cd5bae5f3f775c73f984453f
+> 74d89202af1059a61b587e38602a59344c2f7ddca3a9bbad4f4b7f8526973a86910bd97c9fa39b85a4e2f2c462b31bcb068d469fac7c6072cd7022
+> 23398477b39467976901fb48ce89a5248f179053718259309f3337f3a36b9458a50122f5302997083fd7311d1205522053f036cd54973f8f644553
+> a0ef9a070a8a7a960561a9053f1e0fa9f074bc1535aa44386090617232dd9ed2c225a21ae5b509a2372028a03c66405808b0d29c9a5e59fe1ad20f
+> 558ed3b7de8e1b2c008ae3c34fa2082aee91261b57e8a8759127426d93b3313c9ccdbf2f8101aab502bd5e5c7df87b844edccc5879170aec63c512
+> 9076921da0bba056ddc0353868426727b7fcc8e6f736b85cca923a401668fc34a69c0386b14b4a184e213e67564fbe6a1d35e194f5390e754b72bf
+> 6d67829581be27b59e6045f40e76c7684216d5def26d04c3f9e2d47fb551dad28fddb74e2d3c8527df5df6db870c06f8b8396594d4838f09b15529
+> 6fd07f347376a6949e8934f75ef2d29525917d26c4c2498106cf4f634953250af80be75c59b661ea9d21ce4633df9d6bc55dadb00f79b8fbea8080
+> 4b9aaa0bdb5cb86cf95cc7095238144aca211975fa5ed3d7377b6bd9348c6c4e7c77aea95ecddd787f98ce411161446b9f47f725e4b274938c5b90
+> b608d3ac3d5080a7e5da394fd42c9b3accf5cdd7dcf8a37fa2aa72f5fa46aa7d5a40dc2a44e0642eeb17362bb8274fd6cc4160eb6d42c278e6f973
+> 672882e54e69646a602c5952410326e2d0b20b379b80688590a6edf90e75245454a885415b0f049fec625527f9a0d32a722f9851c19e9da18bbcff
+> 30a3fd7e9c090ba6d95cf33fc4ec6ddf0d06e3ea016201ce73cb8824f0393d85d95bd1e61725eb232e26744e9b0aa8be7115d7af652e7829b05b19
+> 47e2ed867730028bb34390481b0ffd6449368a0e1884e336c5c662b6361da6e6aaaea0998649a3a2eea9dfad6df2227e2b03785968eed637d4d960
+> ba0e1fcedae47e8b0306a0e08cf87016e1b66838fc7674a1200111100254695f1534d9307196e9809b9354978780b4a5adbd33942bf01bb3d90867
+> ae10239050132e8dd58a75dd8fcfbab7ab6636f5d33db1a3a09c92bb53c135fc1acf53918d5c5b2133587b79fe9a1f914a5ccf9083dd2181de891c
+> 4017fa418f1122e223dc123746b46af84bc7f23c80a2e77b5c174dd88a2939ec22677ba45c65e414fed41e062173dcfcd6dfa5366f1b416f83a749
+> ae991dc65fbe5b7554cd1c8978e99240487fb3e0e805741a18189638de3a16104830f44572698688e461a1481bf355043c11a2944620bee9e55170
+> c7e56e4dd0b706fe3d4b1d66913d9cc54404d4a74727867641b0b39e97373691d3fd80356b67208ed7f350073bf508008a5b96514bf6d3022a1d73
+> 590a07405216497da59b7dcb8d76b91f512028420d16983489eb508140ac4da8e0e5429fe892c2b13fc95b5276a3af0f28eeabdd0d3344220890a8
+> 501373afdb9f37dacb1cc238a9703a3a0d0f8d42031c7345228575515a5cf758a66bbd7bab1c5c21e025083a27cae5fb6c46866d61f052e83d5b29
+> 075cbd75a061d87d45adad37ceecb3806be32c7beb3ada5e45e42e1690e970a6fe895495355c1fdba95e90fa1eb119d8702b6a4968217af171b150
+> d6d032085ffbb0c1c63467c912a8e7e7f37ad33772cbabaa8f07242dd63210a1e6cc4f6f25240e3a8c7629ea030de6da9439bcd736b3b94b74a333
+> 55054e406108266424f9c95937745be3d54372d3fcc7cfb78a3d10dae17c09fee2bd4650aa1780a66ffa49025833064f09ccef8a87462e2402d3c8
+> c7a68b9e94b94dba9fd0a43e972aad993e251c7f2aba1569837f16e4b9d117a0a516c4c0aad7d4c7800d70e3dba12506b0a528ce76269a5d6123ce
+> 27ef2547baf52466a70f2636a1f7b82c431f13daa0f04dfaeac7794dca33857a056ca6d4f9e2f6edb3a07d6e8fc8e398a3296248c9479d86f512bd
+> c9902902231ca7185d66c0d053ea7efe608727b372aaa20ce0c4c3b41bea206bd32c2ed4a02d588733d08cd4ed23ea2203fd28df2a7c35a89b8c19
+> 1be4c1df1cea80acd6b8df7f8013f7ab1a67fd3ac96010ce710c8f20a62d3733381d1270b3f96ad2dd093ea0b3981c390a0d91df6278c12d8499ae
+> 6f49ce1cc54e874f64723ab53015d776b722a34e523dc29906a78f9d434584b0b38f7adc43ed89c8b60130afa79c527eb7068eafbc8963b1671bef
+> b8da7796e44eb1e2e1dfc193956aec591c645a129784d611ec920cc84d7753183a3522fdb89eb78d3bff54e2819c15632fed2049e644bc26293384
+> 6ec102f09731a8637a99ef3f779570a2687b52b452dcf0a84d3372a766e0d3a83a2efae4278ef164b6292e54644b4f5222bd74bbeeb94b6666922a
+> 17cea4f41f3be4140122ecbc051b19acecfe02b0fdecebf53db8b18f84c501315aa99fa4ffc5423307058289e618dfeda6e11dfe5613fe7bc08f3b
+> 386f0c52900769b16716149a4ee160bb0c893e59c512a2c94cbb95c5f0058d52f84ce40ce9c1807d97041d75b199705e838298b8bf461d260107e7
+> e2981f42a771734b413e7a81b1823fc7ea3185ff8a597a025f501b79d4cdc2f75ed9808b003e17111bee6cd078b053c11f33bd17a122daa3a617ae
+> b3cebf2299209bc4c5d13cc16f9b6a2feb1943fec43b11b22432595b69b260e9a5c4c9e1854fb4afc9c1d9bc5d3b01a577afa318a9aee7bc1359f2
+> 54079394d989de6109c2be87f8ced4bcd4df45b6110e61e562f99c50f0a02f2e10fb1609b3555f71be5314a400c8a28c2e137125b867d15ce3bc8e
+> 5eb6cf11176e86ea0bb77cdff760b6b9f0730d6d3792a612c63406c69845535fd4998f5c57f49b8afe66a83062392ada057e256718105da1084319
+> 51014aceaf32d89d3ecda9b0cf6a3d806d8fc7bf62fef98ac7f4698ee6ead50b87a8c0a0cd01b9fef10fa919cd714b48b1fbece045d38b195cfdb9
+> c5bdad0b87fed626e15c9584fe35a08a410f31da4332e4f67b478c174dcfb3c38f09e589a7d584b19797c18213b86b2ce8cfb9fa402b7a7d331737
+> dc8b6394932d6d9367af6a484550eea9011288de937993714f4ae5b7718fd4e8c0de5d9501e9457bb87cc4b149db13246637537eb30e6705512834
+> 48ba3e5be1d743a07612176e3d88a2c85e6731dc48be2c85811594aed89ad5ca41f3351132d53326353792356b2a73643197b23810ff1b6f3bc9f5
+> bef44495bdc92bfcfe7ba81d0728b8f3aa241ddce5e742289cc1034407d5b1b9840f3db31b93dfee36adbf8f3a53cd96cc301f663e929c25df4a3f
+> 9dabe7e6e3145a840f30245775edc1dcec3de715b7d75947ab94d04c7002d2a15b4bd56937590eab18f94b2e00010000009c31d9).
+
+. 
+. restore
+
+. 
+. 
+. *----------------------------------------------------------------------*
+. * 3H. COMPOSITION DES BLOCS
+. *----------------------------------------------------------------------*
+. 
+. di as result "======================================================="
+=======================================================
+
+. di as result "COMPOSITION DES BLOCS"
+COMPOSITION DES BLOCS
+
+. di as result "======================================================="
+=======================================================
+
+. 
+. preserve
+
+.     contract bloc stratum_label block_number_local bloc_n
+
+.     sort bloc
+
+.     list, noobs sep(0)
+
+  +----------------------------------------------------------+
+  |         stratum_label   block_~l   bloc   bloc_n   _freq |
+  |----------------------------------------------------------|
+  |        ABOMEY - Large          1      1        3       3 |
+  |        ABOMEY - Small          1      2        3       3 |
+  | ABOMEY-CALAVI - Large          1      3        6       6 |
+  | ABOMEY-CALAVI - Large          2      4        3       3 |
+  | ABOMEY-CALAVI - Small          1      5        6       6 |
+  | ABOMEY-CALAVI - Small          2      6        4       4 |
+  |  AGBANGNIZOUN - Large          1      7        4       4 |
+  |  AGBANGNIZOUN - Small          1      8        4       4 |
+  |        ALLADA - Large          1      9        6       6 |
+  |        ALLADA - Small          1     10        6       6 |
+  |        ALLADA - Small          2     11        2       2 |
+  |       BOHICON - Large          1     12        5       5 |
+  |       BOHICON - Small          1     13        5       5 |
+  |          COVE - Large          1     14        2       2 |
+  |          COVE - Small          1     15        3       3 |
+  |        DJIDJA - Large          1     16        4       4 |
+  |        DJIDJA - Small          1     17        5       5 |
+  |      KPOMASSE - Large          1     18        5       5 |
+  |      KPOMASSE - Small          1     19        5       5 |
+  |        OUIDAH - Large          1     20        4       4 |
+  |        OUIDAH - Small          1     21        5       5 |
+  |        OUINHI - Large          1     22        3       3 |
+  |        OUINHI - Small          1     23        3       3 |
+  |        SO-AVA - Large          1     24        2       2 |
+  |        SO-AVA - Small          1     25        3       3 |
+  |         TOFFO - Large          1     26        4       4 |
+  |         TOFFO - Small          1     27        5       5 |
+  |  TORI-BOSSITO - Large          1     28        4       4 |
+  |  TORI-BOSSITO - Small          1     29        4       4 |
+  |      ZA-KPOTA - Large          1     30        4       4 |
+  |      ZA-KPOTA - Small          1     31        4       4 |
+  |     ZAGNANADO - Large          1     32        4       4 |
+  |     ZAGNANADO - Small          1     33        4       4 |
+  |            ZE - Large          1     34        5       5 |
+  |            ZE - Small          1     35        5       5 |
+  |    ZOGBODOMEY - Large          1     36        6       6 |
+  |    ZOGBODOMEY - Small          1     37        6       6 |
+  +----------------------------------------------------------+
+
+. restore
+
+. 
+. 
+. quietly summarize bloc_n, meanonly
+
+. 
+. di as result "Taille minimale des blocs : `r(min)'"
+Taille minimale des blocs : 2
+
+. di as result "Taille maximale des blocs : `r(max)'"
+Taille maximale des blocs : 6
+
+. 
+. local bloc_mean_fmt : display %9.2f r(mean)
+
+. local bloc_mean_fmt = trim("`bloc_mean_fmt'")
+
+. 
+. di as result "Taille moyenne des blocs  : `bloc_mean_fmt'"
+Taille moyenne des blocs  : 4.54
+
+. 
+. 
+. quietly count if bloc_n < $MIN_BLOCK_SIZE
+
+. 
+. if r(N) > 0 {
+. 
+.     di as text "-------------------------------------------------------"
+-------------------------------------------------------
+.     di as text "`r(N)' ecole(s) appartiennent a un DERNIER bloc de moins"
+120 ecole(s) appartiennent a un DERNIER bloc de moins
+.     di as text "de $MIN_BLOCK_SIZE ecoles. Ceci est ATTENDU par design"
+de 6 ecoles. Ceci est ATTENDU par design
+.     di as text "des lors qu'une strate (commune x taille) n'est pas un"
+des lors qu'une strate (commune x taille) n'est pas un
+.     di as text "multiple exact de $MIN_BLOCK_SIZE : le dernier bloc de"
+multiple exact de 6 : le dernier bloc de
+.     di as text "cette strate recoit simplement les ecoles restantes,"
+cette strate recoit simplement les ecoles restantes,
+.     di as text "sans emprunt a une autre commune."
+sans emprunt a une autre commune.
+.     di as text "-------------------------------------------------------"
+-------------------------------------------------------
+. 
+.     preserve
+.         keep if bloc_n < $MIN_BLOCK_SIZE
+(36 observations deleted)
+.         keep bloc stratum_label block_number_local bloc_n
+.         duplicates drop
+
+Duplicates in terms of all variables
+
+(89 observations deleted)
+.         sort bloc
+.         list, noobs sep(0)
+
+  +--------------------------------------------------+
+  |         stratum_label   block_~l   bloc   bloc_n |
+  |--------------------------------------------------|
+  |        ABOMEY - Large          1      1        3 |
+  |        ABOMEY - Small          1      2        3 |
+  | ABOMEY-CALAVI - Large          2      4        3 |
+  | ABOMEY-CALAVI - Small          2      6        4 |
+  |  AGBANGNIZOUN - Large          1      7        4 |
+  |  AGBANGNIZOUN - Small          1      8        4 |
+  |        ALLADA - Small          2     11        2 |
+  |       BOHICON - Large          1     12        5 |
+  |       BOHICON - Small          1     13        5 |
+  |          COVE - Large          1     14        2 |
+  |          COVE - Small          1     15        3 |
+  |        DJIDJA - Large          1     16        4 |
+  |        DJIDJA - Small          1     17        5 |
+  |      KPOMASSE - Large          1     18        5 |
+  |      KPOMASSE - Small          1     19        5 |
+  |        OUIDAH - Large          1     20        4 |
+  |        OUIDAH - Small          1     21        5 |
+  |        OUINHI - Large          1     22        3 |
+  |        OUINHI - Small          1     23        3 |
+  |        SO-AVA - Large          1     24        2 |
+  |        SO-AVA - Small          1     25        3 |
+  |         TOFFO - Large          1     26        4 |
+  |         TOFFO - Small          1     27        5 |
+  |  TORI-BOSSITO - Large          1     28        4 |
+  |  TORI-BOSSITO - Small          1     29        4 |
+  |      ZA-KPOTA - Large          1     30        4 |
+  |      ZA-KPOTA - Small          1     31        4 |
+  |     ZAGNANADO - Large          1     32        4 |
+  |     ZAGNANADO - Small          1     33        4 |
+  |            ZE - Large          1     34        5 |
+  |            ZE - Small          1     35        5 |
+  +--------------------------------------------------+
+. 
+.         export excel using ///
+>             "$outputdir/blocks_below_minimum.xlsx", ///
+>             firstrow(variables) replace
+file Outputs/blocks_below_minimum.xlsx saved
+.     restore
+. }
+
+. 
+. else {
+. 
+.     di as result ///
+>         "Tous les blocs atteignent au moins $MIN_BLOCK_SIZE ecoles."
+. }
+
+. 
+. 
+. sort bloc id_infra
+
+. 
+. save "$outputdir/ecoles_blocs_locked.dta", replace
+file Outputs/ecoles_blocs_locked.dta saved
+
+. 
+. di as result "======================================================="
+=======================================================
+
+. di as result "DATASET DES BLOCS SAUVEGARDE"
+DATASET DES BLOCS SAUVEGARDE
+
+. di as result "$outputdir/ecoles_blocs_locked.dta"
+Outputs/ecoles_blocs_locked.dta
+
+. di as result "======================================================="
+=======================================================
+
+. 
+. 
+. *======================================================================*
+. * FIN SECTION 3
+. *======================================================================*
+. 
+. *======================================================================*
+. * 5. RANDOMIZATION OF THE THREE TREATMENT ARMS
+. *======================================================================*
+. 
+. isid id_infra
+
+. 
+. sort id_infra
+
+. 
+. set seed $SEED_ARMS
+
+. 
+. capture drop rand_arm
+
+. 
+. gen double rand_arm = runiform()
+
+. 
+. sort bloc rand_arm
+
+. 
+. by bloc: gen long rank_arm = _n
+
+. 
+. by bloc: gen long bloc_n_arm = _N
+
+. 
+. 
+. capture drop group3
+
+. 
+. gen byte group3 = .
+(156 missing values generated)
+
+. 
+. 
+. * Base balanced assignment
+. replace group3 = ///
+>     mod(rank_arm - 1, $N_ARMS) + 1 ///
+>     if rank_arm <= ///
+>     floor(bloc_n_arm / $N_ARMS) * $N_ARMS
+(120 real changes made)
+
+. 
+. 
+. * Randomized remainder - which arm(s) receive the leftover school(s)
+. * is drawn randomly PER BLOCK (same seeded stream), instead of always
+. * defaulting to the lowest-numbered arms.
+. levelsof bloc, local(blist_arm) clean
+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37
+
+. 
+. 
+. foreach b of local blist_arm {
+  2. 
+.     quietly summarize bloc_n_arm ///
+>         if bloc == `b', meanonly
+  3. 
+.     local n = r(max)
+  4. 
+.     local nbase = ///
+>         floor(`n' / $N_ARMS)
+  5. 
+.     local rem = ///
+>         `n' - `nbase' * $N_ARMS
+  6. 
+. 
+.     if `rem' > 0 {
+  7. 
+.         capture frame drop arm_draw
+  8. 
+.         frame create arm_draw
+  9. 
+.         frame arm_draw {
+ 10. 
+.             set obs $N_ARMS
+ 11. 
+.             gen byte arm_id = _n
+ 12. 
+.             gen double u = runiform()
+ 13. 
+.             sort u
+ 14. 
+.         }
+ 15. 
+. 
+.         local chosen ""
+ 16. 
+.         forvalues i = 1/`rem' {
+ 17. 
+.             frame arm_draw: ///
+>                 local this_arm = arm_id[`i']
+ 18. 
+.             local chosen ///
+>                 "`chosen' `this_arm'"
+ 19. 
+.         }
+ 20. 
+.         frame drop arm_draw
+ 21. 
+. 
+.         local i = 1
+ 22. 
+.         foreach a of local chosen {
+ 23. 
+.             quietly replace group3 = `a' ///
+>                 if bloc == `b' ///
+>                 & rank_arm == ///
+>                 `nbase' * $N_ARMS + `i'
+ 24. 
+.             local i = `i' + 1
+ 25. 
+.         }
+ 26. 
+.     }
+ 27. 
+. }
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+
+. 
+. 
+. label define arm_lbl ///
+>     1 "Control" ///
+>     2 "Salience" ///
+>     3 "Salience + Implementation", replace
+
+. 
+. label values group3 arm_lbl
+
+. 
+. label var group3 ///
+>     "Randomized treatment arm"
+
+. 
+. 
+. di as result "Treatment allocation by block:"
+Treatment allocation by block:
+
+. 
+. tab bloc group3
+
+     Final |
+randomizat |
+ ion block |
+(COMMUNE x |
+Small/Larg |
+  e x bloc |     Randomized treatment arm
+    local) |   Control   Salience  Salience  |     Total
+-----------+---------------------------------+----------
+         1 |         1          1          1 |         3 
+         2 |         1          1          1 |         3 
+         3 |         2          2          2 |         6 
+         4 |         1          1          1 |         3 
+         5 |         2          2          2 |         6 
+         6 |         1          2          1 |         4 
+         7 |         1          2          1 |         4 
+         8 |         2          1          1 |         4 
+         9 |         2          2          2 |         6 
+        10 |         2          2          2 |         6 
+        11 |         1          0          1 |         2 
+        12 |         2          1          2 |         5 
+        13 |         2          1          2 |         5 
+        14 |         1          0          1 |         2 
+        15 |         1          1          1 |         3 
+        16 |         1          2          1 |         4 
+        17 |         1          2          2 |         5 
+        18 |         2          2          1 |         5 
+        19 |         2          2          1 |         5 
+        20 |         1          2          1 |         4 
+        21 |         2          1          2 |         5 
+        22 |         1          1          1 |         3 
+        23 |         1          1          1 |         3 
+        24 |         1          1          0 |         2 
+        25 |         1          1          1 |         3 
+        26 |         1          2          1 |         4 
+        27 |         1          2          2 |         5 
+        28 |         1          1          2 |         4 
+        29 |         2          1          1 |         4 
+        30 |         1          1          2 |         4 
+        31 |         2          1          1 |         4 
+        32 |         1          2          1 |         4 
+        33 |         1          1          2 |         4 
+        34 |         2          2          1 |         5 
+        35 |         1          2          2 |         5 
+        36 |         2          2          2 |         6 
+        37 |         2          2          2 |         6 
+-----------+---------------------------------+----------
+     Total |        52         53         51 |       156 
+
+. 
+. 
+. di as result "Overall treatment allocation:"
+Overall treatment allocation:
+
+. 
+. tab group3
+
+ Randomized treatment arm |      Freq.     Percent        Cum.
+--------------------------+-----------------------------------
+                  Control |         52       33.33       33.33
+                 Salience |         53       33.97       67.31
+Salience + Implementation |         51       32.69      100.00
+--------------------------+-----------------------------------
+                    Total |        156      100.00
+
+. 
+. 
+. *----------------------------------------------------------------------*
+. * Treatment balance within blocks
+. *----------------------------------------------------------------------*
+. 
+. preserve
+
+. 
+.     contract bloc group3, freq(narm)
+
+. 
+.     bysort bloc: egen narm_max = max(narm)
+
+.     bysort bloc: egen narm_min = min(narm)
+
+. 
+.     assert narm_max - narm_min <= 1
+
+. 
+.     di as result ///
+>         "Treatment arms balanced within every block."
+Treatment arms balanced within every block.
+
+. 
+. restore
+
+. 
+. 
+. *----------------------------------------------------------------------*
+. * DIAGNOSTIC: how many schools per arm within each block.
+. *
+. * NOTE : depuis la v2, un bloc peut legitimement contenir moins de 6
+. * ecoles (dernier bloc d'une strate commune x taille non-multiple de
+. * 6 - voir Section 3). Dans ce cas, un ou plusieurs bras peuvent
+. * recevoir moins de 2 ecoles dans CE bloc precis. Ceci n'est plus une
+. * erreur bloquante : c'est une consequence attendue de l'absence
+. * d'emprunt inter-commune demandee par le PI. On se contente de le
+. * signaler pour information et tracabilite.
+. *----------------------------------------------------------------------*
+. 
+. preserve
+
+. 
+.     contract bloc group3, freq(narm)
+
+. 
+.     bysort bloc: egen narm_min_check = min(narm)
+
+. 
+.     quietly count if narm_min_check < 2
+
+. 
+.     if r(N) > 0 {
+. 
+.         di as text "-------------------------------------------------------"
+-------------------------------------------------------
+.         di as text "NOTE : dans certain(s) bloc(s), un bras recoit moins de"
+NOTE : dans certain(s) bloc(s), un bras recoit moins de
+.         di as text "2 ecoles. Ceci ne peut survenir que dans le DERNIER"
+2 ecoles. Ceci ne peut survenir que dans le DERNIER
+.         di as text "bloc d'une strate (commune x taille) dont la taille"
+bloc d'une strate (commune x taille) dont la taille
+.         di as text "est < $MIN_BLOCK_SIZE - situation attendue et acceptee"
+est < 6 - situation attendue et acceptee
+.         di as text "par design (voir Section 3)."
+par design (voir Section 3).
+.         di as text "-------------------------------------------------------"
+-------------------------------------------------------
+. 
+.         list bloc group3 narm if narm_min_check < 2, noobs
+
+  +-----------------------------------------+
+  | bloc                      group3   narm |
+  |-----------------------------------------|
+  |    1                     Control      1 |
+  |    1                    Salience      1 |
+  |    1   Salience + Implementation      1 |
+  |    2                     Control      1 |
+  |    2                    Salience      1 |
+  |-----------------------------------------|
+  |    2   Salience + Implementation      1 |
+  |    4                     Control      1 |
+  |    4                    Salience      1 |
+  |    4   Salience + Implementation      1 |
+  |    6                     Control      1 |
+  |-----------------------------------------|
+  |    6                    Salience      2 |
+  |    6   Salience + Implementation      1 |
+  |    7                     Control      1 |
+  |    7                    Salience      2 |
+  |    7   Salience + Implementation      1 |
+  |-----------------------------------------|
+  |    8                     Control      2 |
+  |    8                    Salience      1 |
+  |    8   Salience + Implementation      1 |
+  |   11                     Control      1 |
+  |   11   Salience + Implementation      1 |
+  |-----------------------------------------|
+  |   12                     Control      2 |
+  |   12                    Salience      1 |
+  |   12   Salience + Implementation      2 |
+  |   13                     Control      2 |
+  |   13                    Salience      1 |
+  |-----------------------------------------|
+  |   13   Salience + Implementation      2 |
+  |   14                     Control      1 |
+  |   14   Salience + Implementation      1 |
+  |   15                     Control      1 |
+  |   15                    Salience      1 |
+  |-----------------------------------------|
+  |   15   Salience + Implementation      1 |
+  |   16                     Control      1 |
+  |   16                    Salience      2 |
+  |   16   Salience + Implementation      1 |
+  |   17                     Control      1 |
+  |-----------------------------------------|
+  |   17                    Salience      2 |
+  |   17   Salience + Implementation      2 |
+  |   18                     Control      2 |
+  |   18                    Salience      2 |
+  |   18   Salience + Implementation      1 |
+  |-----------------------------------------|
+  |   19                     Control      2 |
+  |   19                    Salience      2 |
+  |   19   Salience + Implementation      1 |
+  |   20                     Control      1 |
+  |   20                    Salience      2 |
+  |-----------------------------------------|
+  |   20   Salience + Implementation      1 |
+  |   21                     Control      2 |
+  |   21                    Salience      1 |
+  |   21   Salience + Implementation      2 |
+  |   22                     Control      1 |
+  |-----------------------------------------|
+  |   22                    Salience      1 |
+  |   22   Salience + Implementation      1 |
+  |   23                     Control      1 |
+  |   23                    Salience      1 |
+  |   23   Salience + Implementation      1 |
+  |-----------------------------------------|
+  |   24                     Control      1 |
+  |   24                    Salience      1 |
+  |   25                     Control      1 |
+  |   25                    Salience      1 |
+  |   25   Salience + Implementation      1 |
+  |-----------------------------------------|
+  |   26                     Control      1 |
+  |   26                    Salience      2 |
+  |   26   Salience + Implementation      1 |
+  |   27                     Control      1 |
+  |   27                    Salience      2 |
+  |-----------------------------------------|
+  |   27   Salience + Implementation      2 |
+  |   28                     Control      1 |
+  |   28                    Salience      1 |
+  |   28   Salience + Implementation      2 |
+  |   29                     Control      2 |
+  |-----------------------------------------|
+  |   29                    Salience      1 |
+  |   29   Salience + Implementation      1 |
+  |   30                     Control      1 |
+  |   30                    Salience      1 |
+  |   30   Salience + Implementation      2 |
+  |-----------------------------------------|
+  |   31                     Control      2 |
+  |   31                    Salience      1 |
+  |   31   Salience + Implementation      1 |
+  |   32                     Control      1 |
+  |   32                    Salience      2 |
+  |-----------------------------------------|
+  |   32   Salience + Implementation      1 |
+  |   33                     Control      1 |
+  |   33                    Salience      1 |
+  |   33   Salience + Implementation      2 |
+  |   34                     Control      2 |
+  |-----------------------------------------|
+  |   34                    Salience      2 |
+  |   34   Salience + Implementation      1 |
+  |   35                     Control      1 |
+  |   35                    Salience      2 |
+  |   35   Salience + Implementation      2 |
+  +-----------------------------------------+
+. 
+.     }
+
+. 
+.     else {
+. 
+.         di as result ///
+>             "Chaque bras recoit au moins 2 ecoles dans chaque bloc."
+.     }
+
+. 
+. restore
+
+. 
+. 
+. *----------------------------------------------------------------------*
+. * Reproducibility check: re-draw with the SAME seed, sorting by the
+. * SAME fixed key (id_infra) beforehand, and confirm an identical
+. * allocation.
+. *----------------------------------------------------------------------*
+. 
+. preserve
+
+. 
+.     sort id_infra
+
+. 
+.     set seed $SEED_ARMS
+
+. 
+.     gen double rand_arm_chk = runiform()
+
+. 
+.     sort bloc rand_arm_chk
+
+. 
+.     by bloc: gen long rank_chk = _n
+
+.     by bloc: gen long bloc_n_chk = _N
+
+. 
+.     gen byte group3_chk = .
+(156 missing values generated)
+
+. 
+.     replace group3_chk = ///
+>         mod(rank_chk - 1, $N_ARMS) + 1 ///
+>         if rank_chk <= floor(bloc_n_chk / $N_ARMS) * $N_ARMS
+(120 real changes made)
+
+. 
+.     levelsof bloc, local(blist_chk) clean
+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37
+
+. 
+.     foreach b of local blist_chk {
+  2. 
+.         quietly summarize bloc_n_chk if bloc==`b', meanonly
+  3.         local n     = r(max)
+  4.         local nbase = floor(`n' / $N_ARMS)
+  5.         local rem   = `n' - `nbase' * $N_ARMS
+  6. 
+.         if `rem' > 0 {
+  7. 
+.             capture frame drop arm_draw_chk
+  8.             frame create arm_draw_chk
+  9. 
+.             frame arm_draw_chk {
+ 10.                 set obs $N_ARMS
+ 11.                 gen byte   arm_id = _n
+ 12.                 gen double u      = runiform()
+ 13.                 sort u
+ 14.             }
+ 15. 
+.             local chosen ""
+ 16.             forvalues i = 1/`rem' {
+ 17.                 frame arm_draw_chk: local this_arm = arm_id[`i']
+ 18.                 local chosen "`chosen' `this_arm'"
+ 19.             }
+ 20.             frame drop arm_draw_chk
+ 21. 
+.             local i = 1
+ 22.             foreach a of local chosen {
+ 23.                 quietly replace group3_chk = `a' ///
+>                     if bloc==`b' & rank_chk == `nbase'*$N_ARMS + `i'
+ 24.                 local i = `i' + 1
+ 25.             }
+ 26.         }
+ 27.     }
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+Number of observations (_N) was 0, now 3.
+
+. 
+.     assert group3 == group3_chk
+
+. 
+.     di as result "REPRODUCIBILITY CONFIRMED with seed $SEED_ARMS (rng: `c(rngstate)')."
+REPRODUCIBILITY CONFIRMED with seed 20260904 (rng: XAA394dccd5ba5309c98634a99d2c8b14fe0a3b21654303751ab16589f96068699c35
+> a6f8e696e207d9ad84c53ba8f21e7610f9d6509d97a16226848f36528bb99a493e2a12aab49acbff92c3a7692bb447931922350af534d9304a9a9b
+> 86053447308e49ee6803bb1ea66132e126cba328dbf3fe373a6a6d1f858820732368717d2ace58cc003bfb4158f6635309b540cdd0f144617d78b3
+> d27df23068f430fce8e2ea572d12ff7087e336a5b60477cda0e6b3baa65fb41ec790fb7bb1fe69eedff8e54bd20fb175bad7f9cc01d95a5d3e7a1c
+> 5b31fd106ca78afbefaa7b4b58984a9589fb5e979b6d28fba39eafb6a6769d7299a138033476265e47344d4734afd735c995e878de5219ce100687
+> ecf10fc5170f34c52262364cf030dcf726941e66baf448a49ebafee5ee20c0b926de54e5d739cbcc851cd2498e06697870b734b11003a73e13f83d
+> 321e646fd79c7803b32be8293aa4032188c0f70f3457c0b9b261b7effdd4c7a9ff9bcaab59441385167466dfb528cc3ddc65f38edf3847d0aa6dfe
+> 689beea8a0d88ebcf4cdb4a1e4cd39fac50c3c93d325bb2faad9fffd98e9e424a9f5f32b00d6a68b4ae6cb952566a3144475140ae00071c4607c29
+> 0f45fe893c9a004a2315333d20c7b2e65f8c3f1446258d3544996a75b67a12ec96445d443188f0e6b0d32d4261feabc762700958e5c58b592b6186
+> e8a2b593395e152fb7de7d07c674e984a6cf3d47fa7b47abe5500f445b986a6201d454c98f5b353c06d7a897bfcc3d6f944b0f90ee846d9aad36b6
+> a064073b4ed6141c2668129ddc08627d1ef2bf541f68c4951ae3c495ddeb8f1cde70be3e73ce8b094674358323c19f858e44c3dcdba6daad26b941
+> 73270a3afbaf25d139bc8055f71abfc9753c3440fac4293ab3432c3066bc80373558c472e321584ba80fa62876d070d8a7de5d23b12072e3304bd7
+> 1f1dac597c43a0337bf1a2798ce52de2533abdee00580130818bfbe4b1afe584bd2f351fca6a28d36be6a4117837902b0c497f3baaf975a4d6ad1d
+> 241ae17c1d11eb159929fd929610bdb0a9c16ebabc4e31aec354f708ef965399a0a2b615614bf73e2c1b5970a985fc01451be19da8c12649587175
+> 3802492c8cbec1adb411562624d9fbe822461fef45b2d7edfc9748f20563d495d78f0605aeb583e4d81c1e8f62f1c4f2883c9909ed7265d8e7e403
+> 9c80604912d690570f2844f7da1b85d63a1550635b20737e331b8e7089c8adf7408d47e0fd951ef10d82fde0615c3dab97691d896113234f7a8b84
+> f5757a90393a4f1ecbc394f4bd61ee63b91efd785c762b7f6d4620b9a20b50141350dda950742a6c2f4d050f0c9152adec35924706b9b425b34aa0
+> be132057556da9514d8560eaf7ae6ccd20a715dc4bf874ae8a6e4a41952d52a6d231e4546c10824c52089b6135c32a4b5d748b25d2c169a811d4e3
+> 3219659cfea5c27357e5ad0047d7261253b41faa75357419a74dfd6a8b83cf37f1023283b269af2f09d86f3bd611fb40bb99cfc4da275888771146
+> cfebb911710b256944f399199adbe68ba29cd3daa8c96e72026e77df848c2fcc22b30b2103889bcc68fb3fa84a2d8174affdf015105d96eeec2e13
+> c70490c9229df98b693ab823b95fce046a668c6da4e5f0ec46cafa2e0ef04b8e41c35e9c32f9e29d18a959d1838276d40d3c9c25ca56cec6a562a7
+> d1f236dec33ba733a77d4de24ac3ed7a32af83e0c9958133a164c3c17c66d31b250998ca687248a387bf45654438d65a073d6e11b3f32911ed3931
+> 7379eeac3766893da4aeba8fbc8297c89e34c96a9b02569feac21613909e51929d02697cd1ca803e89570af3adf0e28c404d4de3535c90d145831a
+> 197a4c7c499437c4c9fc0734813850f7c47bbfc530fe3fb3fb46dddcb03becfcf42e4221cc32fdd8635617e98a72a1e1c9d8e428214c4530bc79a1
+> 88fa3cf9782bc67951eed0b82d8b1a2f4a5e7d3e0a320f379c65c2d60bb275cf45e84968e3d2cc21aa2fa72ac5fc03540658c2d0ac42c4abed161a
+> b54d5b345a2d8da59f7ff63e4ddf146fb34785c56c9780c434c44f1188d53d85643e8010004de7c1de10f6a5bf524fea237d451197528a0c5cac6a
+> 79d2eddca7385fbe03a0a5f6d0d848bae86759f019c38a10db80af45589cc117a272e908687b5bcc91ea4b8860753262d882f589eb6da6666792f3
+> 9fb0d93a7b7b2f1aaea7da1cc2770ee13a2f744cd5d733ce3bf71226071457bc57018ca3eae824d67ad977f9cfcf722b12a44503bc8d330e246e01
+> 5e5f5a682715bde2e09ad37848195e6ec1621d2bbf8f86d285cbe9369cd6e25f171e234fbbc3f8b9d68bb2ffcb491944983f3f14686bbe07077fb9
+> cb989ea234c274b2442427f1b01dd58076b4653bf0632dcf1170975788a2d10008a90dfbcb7ce551a760ab4f81d8cc70890ec2a9b379f157bfe399
+> 594d6cbb85f1dc50008b7039427bc55da6dc7238204db8bbeec4b87f3deda3665a3a7e37b8355f8c59322edf42fc21268cda46c3433337135699ad
+> ecaa731201abaaa91bde1dc23f8780d9837d56d79d0b52744755a94b87a6dd79959d1ae44789207989421d2b02fee336b1019093fcf1e5262c47c8
+> 4cca37f7fcd5159a142b268cc9ff3bafdb1073b1bc08f539b18832c4828018a1862209eea025e5e4a2f23900ed7c96dc0674c3c8212101d8d3a90c
+> d18f5cb663963fb861641946fd1800649571ca45117984101f007dd6f10c3a3fae9599d50a3ae4240ab8d05b1d21902e8e9b1bb43ec25e4f05af22
+> 5cedaf4aef55c94c8325a1460728ce00472e909df66154b9f7abb44fa6a183d6857da2bc2a9e3e44e912e2f21a5018edeae7132a1c8a921048c0d1
+> c15c119f16c374ce7f71beca0d9000f27c29ded05889ac68d5eac011309f9cdcf605013e923ace6cb3113a5efc1c2539b5faad2f310d5acb297eb4
+> e2c62bc493e405227587526544a5c645622d68c1017bdcc36af9c26600893da11e6a74e4f1f2827a87bbf2b1a805e40ceb5a754bfa838e00479cd2
+> b8878c569ea39a576eb38a39dcb5570722b6edfc6699078501ab7c70c9d8a5baa9edf670a7cc77c9b44fc855623944bae8587cd39e0a3549d3d673
+> 3b48d036fa547c47b976ff138c9fcf9f9ed103a08ef43b48cddf45096d04cb58a658177bcc7ffe1b9c9ea85c288c0a7b5d593ec41e868679702641
+> 79a053ddd522b341e6efd56d4473f6eb239372e1c53e5ebb78286a53d3dd82ecabf25b9c56ee1a4a751e185b569463e9b454b16aa2cd4b648388d0
+> 2cb3208acb4309f5d976003cb4b46040fbcb6abc95eef5a589cae0f7aea5e2c424164a9d009c11bc018d7bcb55956b68ec406de2500b49d18bc49f
+> 1dbf5fc0d66c71095f8270bc07ba5b7042968e66e6744d177bfd5ddefdcb85c827865302f3c35d66fe3b0a5e9d8861fe0678958f86b6d39b7e9d6b
+> 4d14dc16b1d093b1b30beb147be4bb138f592d30c8cb3d7fe15bf41cdf512bf8b06fd8e60ded25816f6a94950001000000e4365f).
+
+. 
+. restore
+
+. 
+. 
+. *======================================================================*
+. * 6. TARGETED PARENT RANDOMIZATION - SEPAREE PAR BRAS DE TRAITEMENT
+. *======================================================================*
+. *
+. * ======================================================================
+. * >>> POINT 1 DU RETOUR PI (Mahounan) <<<
+. *
+. *   "La randomisation Mere/Pere doit se faire separement dans chaque
+. *    bras de traitement. [...] dans le bras Salience, 50% Mere et 50%
+. *    Pere ; dans le bras Salience + Implementation, 50% Mere et 50%
+. *    Pere. Donc la randomisation Mere/Pere doit se faire au niveau
+. *    bloc x traitement, et non simplement au niveau du bloc."
+. *
+. * Mise en oeuvre : le tirage se fait au niveau (bloc x group3) - PAS
+. * seulement au niveau (bloc). Chaque bras traite (Salience, et
+. * Salience + Implementation) recoit donc SA PROPRE randomisation
+. * Mere/Pere, independamment de l'autre bras, meme quand les deux
+. * bras cohabitent dans le meme bloc.
+. *
+. * ------------------------------------------------------------------
+. * CORRECTIF IMPORTANT (v3) sur l'alternance Mere/Pere elle-meme :
+. *
+. *   Avec une simple alternance deterministe
+. *       parent_group = mod(rang-1, 2) + 1
+. *   le rang 1 tombe TOUJOURS sur "Mere". Quand une cellule (bloc x
+. *   bras) a un effectif IMPAIR (frequent car les blocs peuvent faire
+. *   moins de 6 ecoles - voir Point 3), l'ecole "excedentaire" est
+. *   alors TOUJOURS attribuee a la Mere, et ce de facon systematique
+. *   sur l'ensemble des cellules impaires. Le controle "ecart <= 1 par
+. *   cellule" reste satisfait (l'ecart RESTE petit dans chaque
+. *   cellule), mais le biais s'accumule dans le meme sens sur toutes
+. *   les cellules et casse le 50/50 GLOBAL par bras (ex. observe :
+. *   Salience = 36 Mere / 14 Pere au lieu de 25/25).
+. *
+. *   La correction applique EXACTEMENT le meme principe que celui deja
+. *   utilise en Section 5 pour repartir le reste des bras de
+. *   traitement : l'ecole excedentaire d'une cellule impaire est
+. *   attribuee par un TIRAGE ALEATOIRE INDEPENDANT (50/50), et non
+. *   plus systematiquement a la Mere.
+. * ======================================================================
+. 
+. capture drop treated
+
+. 
+. gen byte treated = ///
+>     inlist(group3, 2, 3)
+
+. 
+. label var treated ///
+>     "1 = treated school"
+
+. 
+. 
+. sort id_infra
+
+. 
+. set seed $SEED_PARENT
+
+. 
+. capture drop rand_parent
+
+. 
+. gen double rand_parent = ///
+>     runiform() if treated == 1
+(52 missing values generated)
+
+. 
+. 
+. sort bloc group3 rand_parent
+
+. 
+. capture drop rank_parent
+
+. by bloc group3: gen long rank_parent = ///
+>     _n if treated == 1
+(52 missing values generated)
+
+. 
+. 
+. *----------------------------------------------------------------------*
+. * Taille de chaque cellule (bloc x bras traite)
+. *----------------------------------------------------------------------*
+. * Comme group3 in {2,3} implique treated==1 pour TOUTES les ecoles
+. * d'une cellule (bloc,group3) traitee, _N compte exactement le nombre
+. * d'ecoles traitees de cette cellule.
+. *----------------------------------------------------------------------*
+. 
+. capture drop n_treated_cell
+
+. by bloc group3: gen long n_treated_cell = _N if treated == 1
+(52 missing values generated)
+
+. 
+. 
+. *----------------------------------------------------------------------*
+. * 6A. PARTIE PAIRE DE LA CELLULE : alternance stricte 50/50
+. *----------------------------------------------------------------------*
+. 
+. capture drop parent_group
+
+. gen byte parent_group = .
+(156 missing values generated)
+
+. 
+. replace parent_group = ///
+>     mod(rank_parent - 1, 2) + 1 ///
+>     if treated == 1 & ///
+>        rank_parent <= floor(n_treated_cell / 2) * 2
+(66 real changes made)
+
+. 
+. 
+. *----------------------------------------------------------------------*
+. * 6B. ECOLES EXCEDENTAIRES (cellules bloc x bras de taille impaire)
+. *
+. * CORRECTIF v4 - IMPORTANT :
+. *
+. *   La v3 tirait, pour l'ecole excedentaire de CHAQUE cellule impaire,
+. *   un pile-ou-face 50/50 INDEPENDANT. Chaque tirage pris isolement
+. *   est bien 50/50 - mais la SOMME de plusieurs tirages independants
+. *   n'a aucune raison de retomber exactement sur 50/50 pour l'ensemble
+. *   du bras : par pur hasard, plusieurs tirages peuvent tomber du
+. *   meme cote. C'est exactement ce qui a ete observe a l'execution :
+. *   Salience + Implementation = 25 Mere / 27 Pere (ecart de 2), alors
+. *   que le PI demande 50/50 PAR BRAS.
+. *
+. *   Correction : les ecoles excedentaires ne sont plus tirees a
+. *   pile-ou-face INDEPENDAMMENT cellule par cellule. Elles sont
+. *   d'abord REGROUPEES PAR BRAS DE TRAITEMENT (Salience d'un cote,
+. *   Salience + Implementation de l'autre), mises dans un ORDRE
+. *   ALEATOIRE, puis ALTERNEES Mere/Pere au sein de ce regroupement.
+. *   Cela garantit un ecart Mere/Pere <= 1 GARANTI MATHEMATIQUEMENT
+. *   pour l'ENSEMBLE de chaque bras (et non plus seulement "en
+. *   esperance"), tout en gardant un tirage aleatoire pour determiner
+. *   QUELLE ecole precise recoit Mere ou Pere.
+. *
+. *   S'il reste, apres cette alternance, UNE SEULE ecole non appariee
+. *   dans un bras (cas ou le nombre d'ecoles excedentaires de ce bras
+. *   est lui-meme impair), celle-la - et uniquement celle-la, au plus
+. *   une fois par bras - est tranchee par un dernier tirage 50/50.
+. *----------------------------------------------------------------------*
+. 
+. capture drop is_leftover
+
+. gen byte is_leftover = ///
+>     (treated == 1 & rank_parent == n_treated_cell & mod(n_treated_cell, 2) == 1)
+
+. 
+. 
+. * Ordre aleatoire des ecoles excedentaires, INDEPENDANT de leur ordre
+. * de tirage initial (nouveau tirage, meme flux seede $SEED_PARENT,
+. * donc reproductible), a partir d'un tri fixe (id_infra).
+. 
+. sort id_infra
+
+. 
+. capture drop rand_leftover
+
+. gen double rand_leftover = runiform() if is_leftover == 1
+(118 missing values generated)
+
+. 
+. sort group3 rand_leftover
+
+. 
+. capture drop rank_leftover
+
+. by group3: gen long rank_leftover = _n if is_leftover == 1
+(118 missing values generated)
+
+. 
+. capture drop n_leftover_arm
+
+. bysort group3: egen long n_leftover_arm = total(is_leftover)
+
+. 
+. 
+. * Partie paire du regroupement "ecoles excedentaires" : alternance
+. * stricte Mere/Pere, GARANTISSANT un ecart de 0 sur cette partie.
+. 
+. replace parent_group = ///
+>     mod(rank_leftover - 1, 2) + 1 ///
+>     if is_leftover == 1 & ///
+>        rank_leftover <= floor(n_leftover_arm / 2) * 2
+(36 real changes made)
+
+. 
+. 
+. * S'il reste UNE ecole non appariee dans ce bras (n_leftover_arm
+. * impair) - au plus UNE PAR BRAS - tirage 50/50 pour celle-la.
+. 
+. capture drop u_tiebreak
+
+. gen double u_tiebreak = runiform() ///
+>     if is_leftover == 1 & ///
+>        rank_leftover == n_leftover_arm & ///
+>        mod(n_leftover_arm, 2) == 1
+(154 missing values generated)
+
+. 
+. replace parent_group = ///
+>     cond(u_tiebreak < 0.5, 1, 2) ///
+>     if is_leftover == 1 & ///
+>        rank_leftover == n_leftover_arm & ///
+>        mod(n_leftover_arm, 2) == 1
+(2 real changes made)
+
+. 
+. drop rand_leftover u_tiebreak
+
+. 
+. 
+. quietly count if treated == 1 & missing(parent_group)
+
+. 
+. if r(N) > 0 {
+. 
+.     di as error ///
+>         "`r(N)' ecoles traitees n'ont pas recu de parent_group."
+. 
+.     exit 459
+. }
+
+. 
+. 
+. label define parent_lbl ///
+>     1 "Mother" ///
+>     2 "Father", replace
+
+. 
+. label values parent_group parent_lbl
+
+. 
+. label var parent_group ///
+>     "Targeted parent (randomized within bloc x treatment arm)"
+
+. 
+. 
+. di as result "Repartition Mere/Pere par bloc et par bras :"
+Repartition Mere/Pere par bloc et par bras :
+
+. 
+. tab bloc parent_group ///
+>     if treated == 1
+
+     Final |
+randomizat |
+ ion block |
+(COMMUNE x |    Targeted parent
+Small/Larg |  (randomized within
+  e x bloc | bloc x treatment arm)
+    local) |    Mother     Father |     Total
+-----------+----------------------+----------
+         1 |         2          0 |         2 
+         2 |         0          2 |         2 
+         3 |         2          2 |         4 
+         4 |         1          1 |         2 
+         5 |         2          2 |         4 
+         6 |         1          2 |         3 
+         7 |         1          2 |         3 
+         8 |         2          0 |         2 
+         9 |         2          2 |         4 
+        10 |         2          2 |         4 
+        11 |         1          0 |         1 
+        12 |         2          1 |         3 
+        13 |         1          2 |         3 
+        14 |         1          0 |         1 
+        15 |         2          0 |         2 
+        16 |         1          2 |         3 
+        17 |         2          2 |         4 
+        18 |         2          1 |         3 
+        19 |         2          1 |         3 
+        20 |         1          2 |         3 
+        21 |         1          2 |         3 
+        22 |         0          2 |         2 
+        23 |         1          1 |         2 
+        24 |         0          1 |         1 
+        25 |         1          1 |         2 
+        26 |         2          1 |         3 
+        27 |         2          2 |         4 
+        28 |         1          2 |         3 
+        29 |         0          2 |         2 
+        30 |         2          1 |         3 
+        31 |         1          1 |         2 
+        32 |         1          2 |         3 
+        33 |         2          1 |         3 
+        34 |         2          1 |         3 
+        35 |         2          2 |         4 
+        36 |         2          2 |         4 
+        37 |         2          2 |         4 
+-----------+----------------------+----------
+     Total |        52         52 |       104 
+
+. 
+. 
+. di as result "Repartition Mere/Pere par bras (verification globale 50/50) :"
+Repartition Mere/Pere par bras (verification globale 50/50) :
+
+. 
+. tab group3 parent_group ///
+>     if treated == 1
+
+                      |    Targeted parent
+                      |  (randomized within
+ Randomized treatment | bloc x treatment arm)
+                  arm |    Mother     Father |     Total
+----------------------+----------------------+----------
+             Salience |        27         26 |        53 
+Salience + Implementa |        25         26 |        51 
+----------------------+----------------------+----------
+                Total |        52         52 |       104 
+
+. 
+. 
+. *----------------------------------------------------------------------*
+. * Equilibre Mere/Pere a l'interieur de chaque (bloc x bras)
+. *----------------------------------------------------------------------*
+. 
+. preserve
+
+. 
+.     contract bloc group3 parent_group if treated == 1, freq(npar)
+
+. 
+.     bysort bloc group3: egen npar_max = max(npar)
+
+.     bysort bloc group3: egen npar_min = min(npar)
+
+. 
+.     assert npar_max - npar_min <= 1
+
+. 
+.     di as result ///
+>         "Mere/Pere equilibres (diff <= 1) dans chaque bloc x bras traite."
+Mere/Pere equilibres (diff <= 1) dans chaque bloc x bras traite.
+
+. 
+. restore
+
+. 
+. 
+. *----------------------------------------------------------------------*
+. * Equilibre Mere/Pere GLOBAL, PAR BRAS (verification explicite du
+. * 50/50 demande par le PI, pas seulement cellule par cellule)
+. *----------------------------------------------------------------------*
+. 
+. preserve
+
+. 
+.     contract group3 parent_group if treated == 1, freq(narm_parent)
+
+. 
+.     bysort group3: egen narm_parent_max = max(narm_parent)
+
+.     bysort group3: egen narm_parent_min = min(narm_parent)
+
+. 
+.     quietly summarize narm_parent_max, meanonly
+
+.     local check_max = r(max)
+
+. 
+.     gen diff_arm_parent = narm_parent_max - narm_parent_min
+
+. 
+.     quietly count if diff_arm_parent > 1
+
+. 
+.     if r(N) > 0 {
+. 
+.         di as error "======================================================="
+.         di as error ///
+>             "ERREUR : au moins un bras de traitement n'est pas equilibre"
+.         di as error ///
+>             "50/50 (Mere/Pere) globalement (ecart > 1)."
+.         di as error "======================================================="
+. 
+.         list group3 parent_group narm_parent, noobs
+. 
+.         exit 459
+.     }
+
+. 
+.     di as result ///
+>         "Mere/Pere equilibres 50/50 (ecart <= 1) GLOBALEMENT dans" ///
+>         " CHAQUE bras traite (Salience, Salience + Implementation)."
+Mere/Pere equilibres 50/50 (ecart <= 1) GLOBALEMENT dans CHAQUE bras traite (Salience, Salience + Implementation).
+
+. 
+. restore
+
+. 
+. 
+. *----------------------------------------------------------------------*
+. * Reproducibility check for the parent draw (meme logique EXACTE en
+. * deux niveaux : alternance par cellule bloc x bras, puis regroupement
+. * et alternance des ecoles excedentaires PAR BRAS)
+. *----------------------------------------------------------------------*
+. 
+. preserve
+
+. 
+.     sort id_infra
+
+. 
+.     set seed $SEED_PARENT
+
+. 
+.     gen double rand_parent_chk = runiform() if treated == 1
+(52 missing values generated)
+
+. 
+.     sort bloc group3 rand_parent_chk
+
+. 
+.     by bloc group3: gen long rank_parent_chk = _n if treated == 1
+(52 missing values generated)
+
+. 
+.     by bloc group3: gen long n_treated_cell_chk = _N if treated == 1
+(52 missing values generated)
+
+. 
+.     gen byte parent_group_chk = .
+(156 missing values generated)
+
+. 
+.     replace parent_group_chk = ///
+>         mod(rank_parent_chk - 1, 2) + 1 ///
+>         if treated == 1 & ///
+>            rank_parent_chk <= floor(n_treated_cell_chk / 2) * 2
+(66 real changes made)
+
+. 
+.     gen byte is_leftover_chk = ///
+>         (treated == 1 & rank_parent_chk == n_treated_cell_chk & ///
+>          mod(n_treated_cell_chk, 2) == 1)
+
+. 
+.     sort id_infra
+
+. 
+.     gen double rand_leftover_chk = runiform() if is_leftover_chk == 1
+(118 missing values generated)
+
+. 
+.     sort group3 rand_leftover_chk
+
+. 
+.     by group3: gen long rank_leftover_chk = _n if is_leftover_chk == 1
+(118 missing values generated)
+
+. 
+.     bysort group3: egen long n_leftover_arm_chk = total(is_leftover_chk)
+
+. 
+.     replace parent_group_chk = ///
+>         mod(rank_leftover_chk - 1, 2) + 1 ///
+>         if is_leftover_chk == 1 & ///
+>            rank_leftover_chk <= floor(n_leftover_arm_chk / 2) * 2
+(36 real changes made)
+
+. 
+.     gen double u_tiebreak_chk = runiform() ///
+>         if is_leftover_chk == 1 & ///
+>            rank_leftover_chk == n_leftover_arm_chk & ///
+>            mod(n_leftover_arm_chk, 2) == 1
+(154 missing values generated)
+
+. 
+.     replace parent_group_chk = ///
+>         cond(u_tiebreak_chk < 0.5, 1, 2) ///
+>         if is_leftover_chk == 1 & ///
+>            rank_leftover_chk == n_leftover_arm_chk & ///
+>            mod(n_leftover_arm_chk, 2) == 1
+(2 real changes made)
+
+. 
+.     assert parent_group == parent_group_chk if treated == 1
+
+. 
+.     di as result "REPRODUCIBILITY CONFIRMED with seed $SEED_PARENT (rng: `c(rngstate)')."
+REPRODUCIBILITY CONFIRMED with seed 20260829 (rng: XAAa789bd8a2474755c878fd10eb4dc67bd97b9a9aed1a4a027b200711353c1b8da6e
+> 02c26f995c91e76ef9ca8600d2d0bfd03d96adf7be40af3ea1c5bff12bcd621d605116ddf7376148ff29f7563c0bc04a308d8fed1b52ca68d60820
+> 11d1139c168d4fc600b6b58e4d3f8ff6c8fec3eb1479d18771bed7d2317661689d1be159bb4b446c83b23a6de6b74817266c07b3c49aca7b62f93a
+> e04848fd73830e2ecd9691034b503e3caf8e5cfe69c0e1e3eac4547d73e945b8e8eb254558d1af918a03e761c5cc68dc599061cce026b824b09b64
+> b12732e658358fa7e398dc5ca69d494eddd6e440a2f14823e7c8a183ed8f4e8ce061a2afee76aa3d8a54a1ad98495af36261fd53c73f57b780b24a
+> 22e91944e676a4935826b6abccb2adccf5bd9f0dfd28068ee6e676cf9e961bd370f4c55ee331d27b88d0f117ac19381e064d2029ed71bea2aaf86b
+> e818cbd434433704c53a82013ad16b1a4d04388df35c445cfe381be0886852cd6301efc7d4fbefce5ba07f83c20e66dfd1ce11de8088b056e33c29
+> d440ba6cccd88d219ee5d872e76bf74a81090dc8207c3e3accb6fc97176ff398390f8eff10bfbac443b956e673297fc9a6dad447707177f606ae0c
+> fea7970be447a9b4ba9027809916533f9e137db63aaec85519afab41487504be61133f49097946ef9963c3ac215d0d432bcad15cefa57d9c679fbb
+> b64107a66ca6715c30e1ce197eff57372b9010196805876b541fedc5b786148d393dd26729c7814e7493ecb40510f34c0b766fd23740f92bcfc5ef
+> 2d1988402eb7b2d98f50e1b202f912afa244c466f48ec0f728d37e810b6cc31a1652474bad9c44749eba8a50a49e680c191bab13a5185894c43a77
+> 97d2f21bf83791a9536d04fd99651eec8743a928992d9e18b1706a30ab7e260ab4dacc474105746ab53f9c9dd81509b2dfdc4a5d19b2a5f344924e
+> ffcfa5cdbe8dd84b8e9b8c5d2489de3a2d19db7e0e7902addfd4b0b2d70d6d177fa7b68c326c98468d8157077cb2f49bbfa6891e50a6e61369437f
+> cf275e16601350b3aa5cdb15c68a8db8f4e4c7665c8aa2c685b5e1ea37629ef250327d154ebbc3bc5370381e9af3d50546efe678dc32688fcbaa55
+> edbb6ed5e032430ead25405ddbfa114c862454cb059123a29cdf762920b28326222ce65ea649f24a27eeaae2be36e2707914e2761e1df86e0cfb66
+> 700b26778aba176b771b3e8e9b8e0f46a07a75eb7a8a3b0f59f491abd18854673067783589ff9bb785ce6974b02b5d8e75acf0df61a4f7bcfe2b63
+> d64a181b435083af7972cef39977bc5cb1ebfb24ff6829f08e2139341603adeafca329552aba4c7990fed97275d83ea1453db6ade4b42ea81fb7c8
+> d8012029c5204e4e19a28e921a6938c26f595bae4b2800de2697ca10b7c4c3b89d83beed2452bacabd56656018f567a9a073e5649905b9670d0131
+> e1781b5faa558f51c12a674747b7fffe3f73351a17b0892e455b1cfbc20a2bba28cc375175423497d517ebb5f9f39779f9df31f03184d98416d5c6
+> 94fbbe7caa07a33a2d976e407c3c472656bca232672263f6017494fc9f0a66d961183024e642d4e667b7a4ed3bce3bd66e0c27fc242738891b7b0d
+> d82aa3272fb72f74661a43ae85fcfe47e8062dab5db950f3dec8931b3d35d1cb4395782c0a536601ad1db98c15a93713f4429e0793b6cc5f6374eb
+> e04378c28d7c251fa89743c8750e48fee1d77a92a57adc3a308eeabcfab579e4dedc91f44d634f2552ad9683a106aaaa2e366cf9d8b24e7a2df151
+> 755c7a19d1bcbbe26f88f8a18d5db443eb1b00ecfd2a70ed889fb0406228eb35f485912e8e521bac14cedcd52aaeb5a54fe79d6c789333073529db
+> 92b664a672b336bdaa696a811a811704cb8e683fb06c8880f3e41265cbbbb5bb64a47bddce9414577dbb09344d2f4c5dae3eaea84b5e6c07f891a6
+> 1a0a18c91e6a021ad29d2ecfcc02b4134c44fd4a8d3db340b578127a19e9118a59b95093121ba1c2af0a1c72e4439c6aa5d11af45361f757ca6249
+> c36048cbf4537aca9dec7ad2caa1d957eafd83041afeef8e48cadfc4fe55767e91412fa6f3963c764537814732a51db128c9662ffacf6478e826ae
+> 2446a2e1564de72932a0e37ce6bbe2c640f2d07f4910decbc4b483b55b079187ac291d67dff5e3f66a71659befa7289502f4e6ff7b40355c253dc8
+> f0c0792493d4b2d49d5aedcf5b37fa59818f4f95715093ba399e261c5b50a93d41787c101f360b5c6c0704fb721f14a0f4aea43e8ed9de4df2361f
+> 4478d5c4ce22eea8c960ed3cb55ac23238a0772bdb22555e8d0ca10c9abf653ef9750c3ff04c0987590345c56fc16ee3f6982b4a9b152c9c46cf17
+> 3819532f3686b5390594c3b31f7930935ab50569406d01a588b77cd94806126c6859a8d1440a72b279017cc83b3c76be6105486ffa2af33c4ab33e
+> 4722ec63ca726bf0d20471e4da4064582511a5fe96bc465a3c8ea4aaf6f0ff3f9405e8c1f723460923d4e07f5b50c5829869fe5df47b74a573d6db
+> 8d11ed9cfd96da931aba8d388c109219cdee4af741ac4b577c09454ba6c180e9ca4943c229b2f02f891ee4df599b65382b5383d4c30ec7d0a4c8f2
+> 3fb1c2eeb8a1585ffbe07e0f03236d3c0ada93906520d57d5777d8c45c6db10ce4834a01fa64b8ad0642eac697999e2c7bf9a0da82687af9d55cc4
+> 42c2e931827df5133f3d7121a603480317e7fa7f321202b888f43b01c07f98abe97795d8396ae3cd813463326925c9cb7c778e0e3a0a29a3819c96
+> a4586f28560d9b1e622fa0c5b9d3de0c60256d2f441b7ef86c8c55c7f2f09d2e4bb3711c746a4a6f47b1e29624bd2a938a9323e12c8c829fedb9cb
+> dd65486ecf2de2098acf62453a04816c44e8d34dd4796694fc2561bffb27b2ea3aade6fc0d5bc0307953fccd47286c1bd5247132c0472c10065ab4
+> 3eb42ae010b6dae77cddbdfd3b5ce2f73f95f7ccf09a515cdca73c7f1488d63ecfe91329b37f89d6ee0b33989c9510cd132ace4b70c6c94c873993
+> 7d906bbf2e08bf4881754fd0a806579f9d03491805f5f6ee10919d1641dc0430d4d52d79d4ae00723962976b49f1c328f18a256bbdadd1017102dd
+> d4debcb73ff46044b36885668f256be200c9d079d0b349cda5eec0a94d29bf07d39bc2bb4ce3c10b5036764b37e2f0b1a45520f1af8d5112137cb8
+> f8a003e84f02db6db1717fd08a43e526e369ad7e7db11330abfa6f3fe3c4a0f9e569f2cc9f6ed0bb3faa750e4825414f2c1337f230679c0106edb8
+> 1f90fe4a8d02fa58e407d3881475557fc128b59e368ed1d47d5dfeaea002f381015785114896643c6357f3c65812a2c64fbfa8db2f3c4580d1a782
+> 21b70e7d5a4573a3f1d40c6b053e48d9082be1226e092d70cb810a262a473ff5b512882d484f6d847dab6910a6f44c375ec4a8da79987694e76845
+> 1d371b9339a5405c80ae4ea847b49a40028e5b352ff44a072b186064c13045a95966059a821121c976e4e63f0001000000904995).
+
+. 
+. restore
+
+. 
+. 
+. *======================================================================*
+. * 7. BALANCE CHECKS
+. *======================================================================*
+. 
+. di as result "======================================================="
+=======================================================
+
+. di as result "BALANCE CHECKS"
+BALANCE CHECKS
+
+. di as result "======================================================="
+=======================================================
+
+. 
+. 
+. * NOTE : une commune peut contenir PLUSIEURS blocs (Small et Large
+. * etant randomises separement, et une strate pouvant elle-meme
+. * comporter plusieurs blocs de 6). Ce tableau au niveau COMMUNE est
+. * INFORMATIONNEL uniquement ; la garantie experimentale d'equilibre
+. * est assuree AU NIVEAU DU BLOC (bloc = COMMUNE x Small/Large x bloc
+. * local), verifiee dans la Section 5 ci-dessus.
+. tab COMMUNE group3, chi2
+
+              |     Randomized treatment arm
+      COMMUNE |   Control   Salience  Salience  |     Total
+--------------+---------------------------------+----------
+       ABOMEY |         2          2          2 |         6 
+ABOMEY-CALAVI |         6          7          6 |        19 
+ AGBANGNIZOUN |         3          3          2 |         8 
+       ALLADA |         5          4          5 |        14 
+      BOHICON |         4          2          4 |        10 
+         COVE |         2          1          2 |         5 
+       DJIDJA |         2          4          3 |         9 
+     KPOMASSE |         4          4          2 |        10 
+       OUIDAH |         3          3          3 |         9 
+       OUINHI |         2          2          2 |         6 
+       SO-AVA |         2          2          1 |         5 
+        TOFFO |         2          4          3 |         9 
+ TORI-BOSSITO |         3          2          3 |         8 
+     ZA-KPOTA |         3          2          3 |         8 
+    ZAGNANADO |         2          3          3 |         8 
+           ZE |         3          4          3 |        10 
+   ZOGBODOMEY |         4          4          4 |        12 
+--------------+---------------------------------+----------
+        Total |        52         53         51 |       156 
+
+         Pearson chi2(32) =   5.1248   Pr = 1.000
+
+. 
+. 
+. tab size_label group3, chi2
+
+Small/Larg |
+         e |
+ according |
+to commune |     Randomized treatment arm
+    median |   Control   Salience  Salience  |     Total
+-----------+---------------------------------+----------
+     Large |        24         27         23 |        74 
+     Small |        28         26         28 |        82 
+-----------+---------------------------------+----------
+     Total |        52         53         51 |       156 
+
+          Pearson chi2(2) =   0.4076   Pr = 0.816
+
+. 
+. 
+. local balance_vars ///
+>     target_enrol ///
+>     NBM6EME NBF6EME ///
+>     NBM5EME NBF5EME ///
+>     SALLESCLASSESTOT ///
+>     EXISTENCEEAU ///
+>     EXISTENCEELECT ///
+>     EXISTENCELATRINES ///
+>     EXISTENCEINFRASTSPORT
+
+. 
+. 
+. foreach v of local balance_vars {
+  2. 
+.     capture confirm numeric variable `v'
+  3. 
+.     if !_rc {
+  4. 
+.         di as text ///
+>             _newline "--- Balance: `v' ---"
+  5. 
+.         quietly regress ///
+>             `v' i.group3 i.bloc, ///
+>             vce(robust)
+  6. 
+.         testparm i.group3
+  7. 
+.     }
+  8. 
+. }
+
+--- Balance: target_enrol ---
+
+ ( 1)  2.group3 = 0
+ ( 2)  3.group3 = 0
+
+       F(  2,   117) =    0.48
+            Prob > F =    0.6198
+
+--- Balance: NBM6EME ---
+
+ ( 1)  2.group3 = 0
+ ( 2)  3.group3 = 0
+
+       F(  2,   117) =    0.51
+            Prob > F =    0.6030
+
+--- Balance: NBF6EME ---
+
+ ( 1)  2.group3 = 0
+ ( 2)  3.group3 = 0
+
+       F(  2,   117) =    0.50
+            Prob > F =    0.6080
+
+--- Balance: NBM5EME ---
+
+ ( 1)  2.group3 = 0
+ ( 2)  3.group3 = 0
+
+       F(  2,   117) =    0.23
+            Prob > F =    0.7965
+
+--- Balance: NBF5EME ---
+
+ ( 1)  2.group3 = 0
+ ( 2)  3.group3 = 0
+
+       F(  2,   117) =    0.40
+            Prob > F =    0.6686
+
+--- Balance: SALLESCLASSESTOT ---
+
+ ( 1)  2.group3 = 0
+ ( 2)  3.group3 = 0
+
+       F(  2,   117) =    0.17
+            Prob > F =    0.8416
+
+--- Balance: EXISTENCEEAU ---
+
+ ( 1)  2.group3 = 0
+ ( 2)  3.group3 = 0
+
+       F(  2,   117) =    0.50
+            Prob > F =    0.6105
+
+--- Balance: EXISTENCEELECT ---
+
+ ( 1)  2.group3 = 0
+ ( 2)  3.group3 = 0
+
+       F(  2,   117) =    0.22
+            Prob > F =    0.7991
+
+--- Balance: EXISTENCELATRINES ---
+
+ ( 1)  2.group3 = 0
+ ( 2)  3.group3 = 0
+
+       F(  2,   117) =    0.14
+            Prob > F =    0.8719
+
+--- Balance: EXISTENCEINFRASTSPORT ---
+
+ ( 1)  2.group3 = 0
+ ( 2)  3.group3 = 0
+
+       F(  2,   117) =    0.51
+            Prob > F =    0.6037
+
+. 
+. 
+. *======================================================================*
+. * 8. FINAL RANDOMIZATION FILE
+. *======================================================================*
+. 
+. capture drop group3_lbl
+
+. gen str35 group3_lbl = ""
+(156 missing values generated)
+
+. 
+. replace group3_lbl = ///
+>     "Control" ///
+>     if group3 == 1
+(52 real changes made)
+
+. 
+. replace group3_lbl = ///
+>     "Salience" ///
+>     if group3 == 2
+(53 real changes made)
+
+. 
+. replace group3_lbl = ///
+>     "Salience + Implementation" ///
+>     if group3 == 3
+(51 real changes made)
+
+. 
+. 
+. capture drop parent_lbl2
+
+. 
+. gen str12 parent_lbl2 = ""
+(156 missing values generated)
+
+. 
+. replace parent_lbl2 = ///
+>     "Mother" ///
+>     if parent_group == 1
+(52 real changes made)
+
+. 
+. replace parent_lbl2 = ///
+>     "Father" ///
+>     if parent_group == 2
+(52 real changes made)
+
+. 
+. replace parent_lbl2 = ///
+>     "N/A" ///
+>     if treated == 0
+(52 real changes made)
+
+. 
+. 
+. preserve
+
+. 
+.     local milieu_admin_var ""
+
+. 
+.     capture confirm variable MILIEU_ADMIN
+
+. 
+.     if !_rc {
+.         local milieu_admin_var "MILIEU_ADMIN"
+.     }
+
+. 
+. 
+.     keep id_infra ///
+>          DEPARTEMENT ///
+>          COMMUNE ///
+>          ARRONDISSEMENT ///
+>          NOMETABLISSEMENT ///
+>          MILIEU ///
+>          `milieu_admin_var' ///
+>          size_label ///
+>          stratum_label ///
+>          bloc ///
+>          group3_lbl ///
+>          parent_lbl2 ///
+>          target_enrol ///
+>          med_enrol
+
+. 
+. 
+.     rename size_label  size_category
+
+.     rename group3_lbl  assigned_group
+
+.     rename parent_lbl2 targeted_parent
+
+. 
+. 
+.     order ///
+>         id_infra ///
+>         DEPARTEMENT ///
+>         COMMUNE ///
+>         ARRONDISSEMENT ///
+>         NOMETABLISSEMENT ///
+>         MILIEU ///
+>         `milieu_admin_var' ///
+>         size_category ///
+>         stratum_label ///
+>         bloc ///
+>         assigned_group ///
+>         targeted_parent ///
+>         target_enrol ///
+>         med_enrol
+
+. 
+. 
+.     sort bloc id_infra
+
+. 
+. 
+.     export excel using ///
+>         "$outputdir/randomization_final.xlsx", ///
+>         firstrow(variables) replace ///
+>         sheet("randomization")
+file Outputs/randomization_final.xlsx saved
+
+. 
+. 
+. restore
+
+. 
+. 
+. *======================================================================*
+. * 9. ARCHIVE FULL DATASET
+. *======================================================================*
+. 
+. save ///
+>     "$outputdir/randomization_final_locked_`timestamp'.dta", ///
+>     replace
+(file Outputs/randomization_final_locked_2026-08-31_12-06-54.dta not found)
+file Outputs/randomization_final_locked_2026-08-31_12-06-54.dta saved
+
+. 
+. 
+. *======================================================================*
+. * 10. DATA SIGNATURE / AUDIT MANIFEST
+. *======================================================================*
+. 
+. datasignature
+  156:96(30649):625091778:2269599509
+
+. 
+. local sig = r(datasignature)
+
+. 
+. 
+. quietly count
+
+. local n_schools = r(N)
+
+. 
+. quietly summarize bloc, meanonly
+
+. local n_blocks = r(max)
+
+. 
+. 
+. file open manifest using ///
+>     "$outputdir/randomization_manifest_`timestamp'.txt", ///
+>     write replace
+(file Outputs/randomization_manifest_2026-08-31_12-06-54.txt not found)
+
+. 
+. 
+. file write manifest ///
+>     "RANDOMIZATION MANIFEST - Gender Norms RCT (v2)" _n
+
+. 
+. file write manifest ///
+>     "=========================================" _n
+
+. 
+. file write manifest ///
+>     "Date/time       : $S_DATE $S_TIME" _n
+
+. 
+. file write manifest ///
+>     "Stata version   : `c(stata_version)'" _n
+
+. 
+. file write manifest ///
+>     "RNG engine      : mt64" _n
+
+. 
+. file write manifest ///
+>     "SEED_BLOCKS     : $SEED_BLOCKS" _n
+
+. 
+. file write manifest ///
+>     "SEED_ARMS       : $SEED_ARMS" _n
+
+. 
+. file write manifest ///
+>     "SEED_PARENT     : $SEED_PARENT" _n
+
+. 
+. file write manifest ///
+>     "N schools       : `n_schools'" _n
+
+. 
+. file write manifest ///
+>     "N blocks        : `n_blocks'" _n
+
+. 
+. file write manifest ///
+>     "Target block size    : $MIN_BLOCK_SIZE" _n
+
+. 
+. file write manifest ///
+>     "Size rule            : commune median (<=  Small, > Large)" _n
+
+. 
+. file write manifest ///
+>     "Stratification        : COMMUNE x Small/Large, blocks built" _n
+
+. 
+. file write manifest ///
+>     "                        separately within each stratum" _n
+
+. 
+. file write manifest ///
+>     "Cross-commune fusion  : NONE (removed per PI review) - each" _n
+
+. 
+. file write manifest ///
+>     "                        commune is fully autonomous; the last" _n
+
+. 
+. file write manifest ///
+>     "                        block of an incomplete stratum simply" _n
+
+. 
+. file write manifest ///
+>     "                        contains the remaining schools" _n
+
+. 
+. file write manifest ///
+>     "Parent randomization  : Mother/Father 50/50, drawn separately" _n
+
+. 
+. file write manifest ///
+>     "                        within EACH treated arm x block" _n
+
+. 
+. file write manifest ///
+>     "Checksum        : `sig'" _n
+
+. 
+. file write manifest ///
+>     "Final Excel     : randomization_final.xlsx" _n
+
+. 
+. file close manifest
+
+. 
+. 
+. *======================================================================*
+. * 11. FINAL OUTPUT
+. *======================================================================*
+. 
+. di as result "======================================================="
+=======================================================
+
+. di as result "RANDOMIZATION COMPLETE"
+RANDOMIZATION COMPLETE
+
+. di as result "======================================================="
+=======================================================
+
+. 
+. di as result ///
+>     "Final randomization:"
+Final randomization:
+
+. di as result ///
+>     "$outputdir/randomization_final.xlsx"
+Outputs/randomization_final.xlsx
+
+. 
+. di as result ///
+>     "Locked dataset:"
+Locked dataset:
+
+. di as result ///
+>     "$outputdir/randomization_final_locked_`timestamp'.dta"
+Outputs/randomization_final_locked_2026-08-31_12-06-54.dta
+
+. 
+. di as result ///
+>     "Block dataset:"
+Block dataset:
+
+. di as result ///
+>     "$outputdir/ecoles_blocs_locked.dta"
+Outputs/ecoles_blocs_locked.dta
+
+. 
+. di as result ///
+>     "Manifest:"
+Manifest:
+
+. di as result ///
+>     "$outputdir/randomization_manifest_`timestamp'.txt"
+Outputs/randomization_manifest_2026-08-31_12-06-54.txt
+
+. 
+. di as result "======================================================="
+=======================================================
+
+. 
+. log close
+      name:  <unnamed>
+       log:  C:\RONALDO\CKDEV\GENDER NORMS\Randomization\Outputs/randomization_log_2026-08-31_12-06-54.log
+  log type:  text
+ closed on:  31 Aug 2026, 12:06:55
+------------------------------------------------------------------------------------------------------------------------

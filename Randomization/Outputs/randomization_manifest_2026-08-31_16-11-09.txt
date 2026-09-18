@@ -1,0 +1,22 @@
+RANDOMIZATION MANIFEST - Gender Norms RCT (v2)
+=========================================
+Date/time       : 31 Aug 2026 16:11:10
+Stata version   : 17
+RNG engine      : mt64
+SEED_BLOCKS     : 20260827
+SEED_ARMS       : 20260713
+SEED_PARENT     : 20260101
+N schools       : 156
+N blocks        : 37
+Target block size    : 6
+Size rule            : commune median (<=  Small, > Large)
+Stratification        : COMMUNE x Small/Large, blocks built
+                        separately within each stratum
+Cross-commune fusion  : NONE (removed per PI review) - each
+                        commune is fully autonomous; the last
+                        block of an incomplete stratum simply
+                        contains the remaining schools
+Parent randomization  : Mother/Father 50/50, drawn separately
+                        within EACH treated arm x block
+Checksum        : 156:96(30649):661190681:746256151
+Final Excel     : randomization_final.xlsx

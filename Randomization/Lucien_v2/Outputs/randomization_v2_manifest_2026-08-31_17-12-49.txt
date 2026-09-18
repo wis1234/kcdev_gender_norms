@@ -1,0 +1,14 @@
+RANDOMIZATION MANIFEST v2 - Gender Norms RCT
+==============================================
+Date/heure       : 31 Aug 2026 17:12:51
+SEED_BLOCKS      : 20260827
+SEED_ARMS        : 20260713
+SEED_PARENT      : 20260101
+N ecoles         : 156
+Regle de taille  : mediane communale, filles 6e+5e
+Strates          : commune x size_label, INDEPENDANTES
+Fusion cross-commune : AUCUNE
+Dernier bloc     : taille = reste de la strate
+Parent           : imbrique dans bloc x bras
+Parent balance   : 26 Mother / 26 Father par bras traite
+Checksum         : 156:98(38317):1270644524:3331512702

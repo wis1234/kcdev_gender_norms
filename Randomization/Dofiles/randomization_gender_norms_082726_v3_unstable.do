@@ -101,9 +101,13 @@ global infile "$mergeoutdir/master_x_gender_norm.xlsx"
 global MIN_BLOCK_SIZE 6
 global N_ARMS 3
 
-global SEED_BLOCKS 20260730
+global SEED_BLOCKS 20260827
+global SEED_ARMS   20260713
+global SEED_PARENT 20260101
+
+/*global SEED_BLOCKS 20260730
 global SEED_ARMS   20260731
-global SEED_PARENT 20260801
+global SEED_PARENT 20260801*/
 
 capture mkdir "$outputdir"
 
