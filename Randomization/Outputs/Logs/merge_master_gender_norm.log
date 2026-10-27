@@ -2,7 +2,7 @@
       name:  <unnamed>
        log:  C:\RONALDO\CKDEV\GENDER NORMS\Randomization\Outputs\Logs\merge_master_gender_norm.log
   log type:  text
- opened on:  14 Aug 2026, 15:00:27
+ opened on:   5 Oct 2026, 15:48:58
 
 . 
 . *===============================================================*
@@ -79,7 +79,7 @@ Duplicates in terms of school_id
 . tempfile gender_norm_clean
 
 . save `gender_norm_clean'
-file C:\Users\moust\AppData\Local\Temp\ST_68fc_000001.tmp saved as .dta format
+file C:\Users\moust\AppData\Local\Temp\ST_a914_000001.tmp saved as .dta format
 
 . 
 . quietly count
@@ -232,287 +232,172 @@ Duplicates in terms of school_id
 . * 6. ELIGIBILITY BASED ON CLASS SIZE
 . *======================================================================*
 . * Create variable: total number of girls in 6th and 5th grade
-. gen elig_school = NBF6EME + NBF5EME
+. //gen elig_school = NBF6EME + NBF5EME
+. gen elig_school = NBF5EME
 
 . 
 . * Define eligibility: each class must have at least 15 girls
-. gen eligible = 1 if NBF6EME >= 15 & NBF5EME >= 15
+. gen eligible = 1 if NBF5EME >= 15
 (5 missing values generated)
 
 . replace eligible = 0 if eligible == .
 (5 real changes made)
 
-. 
-. * Add labels for clarity
-. label define eliglbl 0 "Not eligible" 1 "Eligible"
-
-. label values eligible eliglbl
+. count if eligible==1
+  156
 
 . 
-. * Quick summary of results
-. tab eligible
+end of do-file
 
-    eligible |      Freq.     Percent        Cum.
--------------+-----------------------------------
-Not eligible |          5        3.11        3.11
-    Eligible |        156       96.89      100.00
--------------+-----------------------------------
-       Total |        161      100.00
+. br MILIEU
+
+. do "C:\Users\moust\AppData\Local\Temp\STDa914_000000.tmp"
+
+. *======================================================================*
+. * PROJECT     : Gender Norms RCT - Randomization of Schools
+. * PURPOSE     : Stratified block randomization
+. * VERSION     : v4 - revised per PI review (Mahounan)
+. *
+. * v3 CHANGELOG (par rapport a v2) :
+. *   - CORRECTIF Section 6 : l'ecole "excedentaire" d'une cellule
+. *     (bloc x bras) de taille impaire etait TOUJOURS attribuee a la
+. *     Mere (biais systematique : 36 Mere / 14 Pere observe dans le
+. *     bras Salience au lieu de 25/25). Elle est desormais attribuee
+. *     par un tirage aleatoire 50/50 par cellule, comme deja fait pour
+. *     le reste des bras de traitement en Section 5.
+. *   - Ajout d'un controle explicite du 50/50 GLOBAL par bras traite
+. *     (et pas seulement cellule par cellule) en Section 6.
+. *   - Commentaires enrichis, chaque section renvoyant explicitement
+. *     au point correspondant du retour du PI (Points 1, 2 et 3).
+. *
+. * v4 CHANGELOG (par rapport a v3) - execution reelle sur les donnees :
+. *   - La v3 corrigeait bien le biais systematique (Salience est
+. *     ressorti a 25 Mere / 25 Pere), MAIS le bras Salience +
+. *     Implementation est ressorti a 25 Mere / 27 Pere (ecart de 2) :
+. *     des tirages a pile-ou-face INDEPENDANTS par cellule impaire
+. *     peuvent, par pur hasard, s'accumuler du meme cote, meme sans
+. *     biais systematique.
+. *   - CORRECTIF Section 6B : les ecoles excedentaires de toutes les
+. *     cellules impaires d'un MEME BRAS sont desormais regroupees,
+. *     mises dans un ordre aleatoire, puis alternees Mere/Pere au sein
+. *     de ce regroupement. Ceci garantit MATHEMATIQUEMENT un ecart
+. *     Mere/Pere <= 1 pour l'ENSEMBLE de chaque bras traite (et non
+. *     plus seulement "en esperance"), tout en restant aleatoire quant
+. *     a l'ecole precise qui recoit Mere ou Pere.
+. *
+. * DESIGN (updated per PI review):
+. *
+. *   1. Within each commune, schools are classified Small/Large using
+. *      the commune median of 6eme+5eme enrolment:
+. *         <= commune median -> Small
+. *          > commune median -> Large
+. *
+. *   2. Small and Large are TWO SEPARATE STRATA. Blocks are built
+. *      SEPARATELY within Small and, independently, within Large, for
+. *      each commune. A block NEVER mixes Small and Large schools.
+. *      (Previously blocks were mixed and only balanced in composition;
+. *      this did not guarantee separate arm balance within each size
+. *      category, which is what the design requires.)
+. *
+. *   3. Each commune is fully AUTONOMOUS. There is NO cross-commune
+. *      lending or fusion of any kind. The randomization stratum is
+. *      strictly (COMMUNE x Small/Large).
+. *      (Previously undersized communes borrowed schools from, or were
+. *      merged with, neighbouring communes via a multi-hop distance
+. *      algorithm. This is removed entirely per PI instruction.)
+. *
+. *   4. Within a (COMMUNE x Small/Large) stratum, schools are grouped
+. *      into blocks of 6 in randomized order. If the stratum size is
+. *      not an exact multiple of 6, the blocks of 6 are formed first,
+. *      and the LAST block of that stratum simply contains whichever
+. *      schools remain (this last block may therefore contain fewer
+. *      than 6 schools). No school is ever moved to or from another
+. *      commune to complete this last block.
+. *
+. *   5. Treatment (Control / Salience / Salience + Implementation) is
+. *      randomized within each final block.
+. *
+. *   6. Within EACH treated arm SEPARATELY (Salience, and Salience +
+. *      Implementation) - and within each block - the targeted parent
+. *      (Mother/Father) is randomized 50/50. This guarantees a 50/50
+. *      Mother/Father split inside every treatment arm, rather than
+. *      only at the block level pooling both treated arms together.
+. *======================================================================*
+. 
+. version 17
+
+. clear all
+
+. set more off
+
+. set linesize 120
 
 . 
-. *Eligibility per department
-. tab DEPARTEMENT if eligible == 1
-
-DEPARTEMENT |      Freq.     Percent        Cum.
-------------+-----------------------------------
- ATLANTIQUE |         84       53.85       53.85
-        ZOU |         72       46.15      100.00
-------------+-----------------------------------
-      Total |        156      100.00
-
-. *Eligibility per commune
-. tab COMMUNE if eligible == 1
-
-      COMMUNE |      Freq.     Percent        Cum.
---------------+-----------------------------------
-       ABOMEY |          6        3.85        3.85
-ABOMEY-CALAVI |         19       12.18       16.03
- AGBANGNIZOUN |          8        5.13       21.15
-       ALLADA |         14        8.97       30.13
-      BOHICON |         10        6.41       36.54
-         COVE |          5        3.21       39.74
-       DJIDJA |          9        5.77       45.51
-     KPOMASSE |         10        6.41       51.92
-       OUIDAH |          9        5.77       57.69
-       OUINHI |          6        3.85       61.54
-       SO-AVA |          5        3.21       64.74
-        TOFFO |          9        5.77       70.51
- TORI-BOSSITO |          8        5.13       75.64
-     ZA-KPOTA |          8        5.13       80.77
-    ZAGNANADO |          8        5.13       85.90
-           ZE |         10        6.41       92.31
-   ZOGBODOMEY |         12        7.69      100.00
---------------+-----------------------------------
-        Total |        156      100.00
+. * Variable name abbreviation is disabled for the ENTIRE script. Without
+. * this, a command like "capture drop bloc" - issued defensively before
+. * (re)creating the variable "bloc" - can silently resolve to a totally
+. * different, longer variable if "bloc" happens to be a UNIQUE prefix
+. * match for it at that point in the dataset (e.g. "block_number", since
+. * neither "bloc" nor "bloc_n"/"bloc_n_arm" exist yet when that command
+. * runs). Stata does not warn when an abbreviation match is unique - it
+. * just silently drops whichever variable matches. Turning abbreviation
+. * off makes every variable reference in this do-file resolve to its
+. * EXACT name only, eliminating this entire bug class.
+. set varabbrev off
 
 . 
+. *======================================================================*
+. * 0. SETTINGS
+. *======================================================================*
 . 
-. 
-. *===============================================================*
-. * 7. EXPORT
-. *===============================================================*
-. 
-. * Keep only eligible schools before export
-. keep if eligible == 1
-(5 observations deleted)
+. cd "C:\RONALDO\CKDEV\GENDER NORMS\Randomization"
+C:\RONALDO\CKDEV\GENDER NORMS\Randomization
 
 . 
-. *Drop the extra school before export
-. drop if NOMETABLISSEMENT == "CEG ELITES D'ABOMEY"
-(0 observations deleted)
+. global datadir   "Datasets"
+
+. global outputdir "Outputs"
 
 . 
-. *Replace the "URBAN_SEMIDENSE" schools by "PERIURBAN"
-. *replace MILIEU = "PERIURBAN" if MILIEU == "URBAN_SEMIDENSE"
-. /*Due to the inconsistency of the gps coordinates,
-> in those areas we keep the administrative classification
-> */
-. replace MILIEU = "RURAL" if MILIEU == "URBAN_SEMIDENSE"
-(9 real changes made)
+. global mergeoutdir "$outputdir/Data"
 
-. replace MILIEU = "RURAL" if MILIEU == "Rural"
-(4 real changes made)
+. global infile "$mergeoutdir/master_x_gender_norm.xlsx"
 
 . 
-. order school_id, first
+. global MIN_BLOCK_SIZE 6
 
-. order MILIEU MILIEU_ADMIN milieu_gender_norm giga_name arrondissement_gender_norm ///
->       commune_gender_norm quartiervillage_gender_norm statut_merge_gn, last
-
-. 
-. save "$out_data\master_x_gender_norm.dta", replace
-file Outputs\Data\master_x_gender_norm.dta saved
-
-. export excel using "$out_data\master_x_gender_norm.xlsx", firstrow(variables) replace
-file Outputs\Data\master_x_gender_norm.xlsx saved
+. global N_ARMS 3
 
 . 
-. * Global view
-. tab MILIEU
+. global SEED_BLOCKS 20260827
 
- classification |      Freq.     Percent        Cum.
-----------------+-----------------------------------
-      PERIURBAN |         72       46.15       46.15
-          RURAL |         84       53.85      100.00
-----------------+-----------------------------------
-          Total |        156      100.00
+. global SEED_ARMS   20260713
+
+. global SEED_PARENT 20260101
 
 . 
-. * Loop for all communes in the department ZOU
-. * This extracts all communes belonging to ZOU and runs a tabulation of MILIEU for each
-. levelsof COMMUNE if DEPARTEMENT == "ZOU", local(communes)
-`"ABOMEY"' `"AGBANGNIZOUN"' `"BOHICON"' `"COVE"' `"DJIDJA"' `"OUINHI"' `"ZA-KPOTA"' `"ZAGNANADO"' `"ZOGBODOMEY"'
+. /*global SEED_BLOCKS 20260730
+> global SEED_ARMS   20260731
+> global SEED_PARENT 20260801*/
+. 
+. capture mkdir "$outputdir"
 
 . 
-. foreach c of local communes {
-  2.     di "---- Commune: `c' ----"
-  3.     tab MILIEU if COMMUNE == "`c'" & DEPARTEMENT == "ZOU"
-  4. }
----- Commune: ABOMEY ----
+. capture confirm file "$infile"
 
- classification |      Freq.     Percent        Cum.
-----------------+-----------------------------------
-      PERIURBAN |          3       50.00       50.00
-          RURAL |          3       50.00      100.00
-----------------+-----------------------------------
-          Total |          6      100.00
----- Commune: AGBANGNIZOUN ----
-
- classification |      Freq.     Percent        Cum.
-----------------+-----------------------------------
-      PERIURBAN |          5       62.50       62.50
-          RURAL |          3       37.50      100.00
-----------------+-----------------------------------
-          Total |          8      100.00
----- Commune: BOHICON ----
-
- classification |      Freq.     Percent        Cum.
-----------------+-----------------------------------
-      PERIURBAN |         10      100.00      100.00
-----------------+-----------------------------------
-          Total |         10      100.00
----- Commune: COVE ----
-
- classification |      Freq.     Percent        Cum.
-----------------+-----------------------------------
-      PERIURBAN |          4       80.00       80.00
-          RURAL |          1       20.00      100.00
-----------------+-----------------------------------
-          Total |          5      100.00
----- Commune: DJIDJA ----
-
- classification |      Freq.     Percent        Cum.
-----------------+-----------------------------------
-      PERIURBAN |          6       66.67       66.67
-          RURAL |          3       33.33      100.00
-----------------+-----------------------------------
-          Total |          9      100.00
----- Commune: OUINHI ----
-
- classification |      Freq.     Percent        Cum.
-----------------+-----------------------------------
-      PERIURBAN |          2       33.33       33.33
-          RURAL |          4       66.67      100.00
-----------------+-----------------------------------
-          Total |          6      100.00
----- Commune: ZA-KPOTA ----
-
- classification |      Freq.     Percent        Cum.
-----------------+-----------------------------------
-      PERIURBAN |          5       62.50       62.50
-          RURAL |          3       37.50      100.00
-----------------+-----------------------------------
-          Total |          8      100.00
----- Commune: ZAGNANADO ----
-
- classification |      Freq.     Percent        Cum.
-----------------+-----------------------------------
-      PERIURBAN |          1       12.50       12.50
-          RURAL |          7       87.50      100.00
-----------------+-----------------------------------
-          Total |          8      100.00
----- Commune: ZOGBODOMEY ----
-
- classification |      Freq.     Percent        Cum.
-----------------+-----------------------------------
-      PERIURBAN |          3       25.00       25.00
-          RURAL |          9       75.00      100.00
-----------------+-----------------------------------
-          Total |         12      100.00
+. if _rc {
+.     di as error "Input file not found:"
+.     di as error "$infile"
+.     exit 601
+. }
 
 . 
-. * Loop for all communes in the department ATLANTIQUE
-. * Same logic as above, but restricted to ATLANTIQUE
-. levelsof COMMUNE if DEPARTEMENT == "ATLANTIQUE", local(communes)
-`"ABOMEY-CALAVI"' `"ALLADA"' `"KPOMASSE"' `"OUIDAH"' `"SO-AVA"' `"TOFFO"' `"TORI-BOSSITO"' `"ZE"'
+. * Timestamp
+. local timestamp : di %tcCCYY-NN-DD_HH-MM-SS clock("$S_DATE $S_TIME", "DMYhms")
+
+. local timestamp = subinstr("`timestamp'", ":", "", .)
+
+. local timestamp = subinstr("`timestamp'", " ", "_", .)
 
 . 
-. foreach c of local communes {
-  2.     di "---- Commune: `c' ----"
-  3.     tab MILIEU if COMMUNE == "`c'" & DEPARTEMENT == "ATLANTIQUE"
-  4. }
----- Commune: ABOMEY-CALAVI ----
-
- classification |      Freq.     Percent        Cum.
-----------------+-----------------------------------
-      PERIURBAN |         15       78.95       78.95
-          RURAL |          4       21.05      100.00
-----------------+-----------------------------------
-          Total |         19      100.00
----- Commune: ALLADA ----
-
- classification |      Freq.     Percent        Cum.
-----------------+-----------------------------------
-      PERIURBAN |          4       28.57       28.57
-          RURAL |         10       71.43      100.00
-----------------+-----------------------------------
-          Total |         14      100.00
----- Commune: KPOMASSE ----
-
- classification |      Freq.     Percent        Cum.
-----------------+-----------------------------------
-      PERIURBAN |          1       10.00       10.00
-          RURAL |          9       90.00      100.00
-----------------+-----------------------------------
-          Total |         10      100.00
----- Commune: OUIDAH ----
-
- classification |      Freq.     Percent        Cum.
-----------------+-----------------------------------
-      PERIURBAN |          4       44.44       44.44
-          RURAL |          5       55.56      100.00
-----------------+-----------------------------------
-          Total |          9      100.00
----- Commune: SO-AVA ----
-
- classification |      Freq.     Percent        Cum.
-----------------+-----------------------------------
-      PERIURBAN |          2       40.00       40.00
-          RURAL |          3       60.00      100.00
-----------------+-----------------------------------
-          Total |          5      100.00
----- Commune: TOFFO ----
-
- classification |      Freq.     Percent        Cum.
-----------------+-----------------------------------
-      PERIURBAN |          3       33.33       33.33
-          RURAL |          6       66.67      100.00
-----------------+-----------------------------------
-          Total |          9      100.00
----- Commune: TORI-BOSSITO ----
-
- classification |      Freq.     Percent        Cum.
-----------------+-----------------------------------
-      PERIURBAN |          1       12.50       12.50
-          RURAL |          7       87.50      100.00
-----------------+-----------------------------------
-          Total |          8      100.00
----- Commune: ZE ----
-
- classification |      Freq.     Percent        Cum.
-----------------+-----------------------------------
-      PERIURBAN |          3       30.00       30.00
-          RURAL |          7       70.00      100.00
-----------------+-----------------------------------
-          Total |         10      100.00
-
-. 
-. 
-. 
-. 
-. log close
-      name:  <unnamed>
-       log:  C:\RONALDO\CKDEV\GENDER NORMS\Randomization\Outputs\Logs\merge_master_gender_norm.log
-  log type:  text
- closed on:  14 Aug 2026, 15:00:27
------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+. capture log close
